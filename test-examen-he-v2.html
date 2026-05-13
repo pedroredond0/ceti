@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador Hacking Ético (HE) - Dinámico</title>
+    <style>
+        :root {
+            --primary: #0f3460;
+            --primary-hover: #1a1a2e;
+            --secondary: #535c68;
+            --secondary-hover: #95afc0;
+            --bg-color: #f4f5f7;
+            --card-bg: #ffffff;
+            --text-main: #2f3542;
+            --text-muted: #747d8c;
+            --success: #2ed573;
+            --error: #ff4757;
+            --accent: #e84118;
+            --border-radius: 12px;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .app-container {
+            background-color: var(--card-bg);
+            max-width: 850px;
+            width: 100%;
+            border-radius: var(--border-radius);
+            box-shadow: 0 10px 40px rgba(15, 52, 96, 0.15);
+            padding: 40px;
+            box-sizing: border-box;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #e1e5ee;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+
+        h1 { margin: 0; font-size: 1.6rem; color: var(--primary); }
+        
+        .header-stats {
+            display: flex;
+            gap: 20px;
+            font-weight: 600;
+            color: var(--text-muted);
+            align-items: center;
+        }
+
+        .timer {
+            background-color: #e1e5ee;
+            padding: 6px 12px;
+            border-radius: 6px;
+            color: var(--primary);
+            font-family: monospace;
+            font-size: 1.1rem;
+        }
+
+        .question-text {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+            line-height: 1.5;
+        }
+        
+        .question-hint {
+            font-size: 0.95rem;
+            color: var(--accent);
+            font-weight: bold;
+            margin-bottom: 25px;
+        }
+
+        .options-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .option-btn {
+            background-color: var(--bg-color);
+            border: 2px solid transparent;
+            padding: 16px 20px;
+            border-radius: 8px;
+            font-size: 1rem;
+            text-align: left;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: var(--text-main);
+            font-family: inherit;
+            position: relative;
+            padding-left: 45px;
+        }
+        
+        /* Pseudoelemento para Checkbox / RadioButton visual */
+        .option-btn::before {
+            content: '';
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 18px;
+            height: 18px;
+            border: 2px solid #bdc3c7;
+            background-color: white;
+            transition: all 0.2s ease;
+        }
+
+        /* Forma según el tipo de pregunta (Radio o Checkbox) */
+        .single-choice .option-btn::before { border-radius: 50%; }
+        .multi-choice .option-btn::before { border-radius: 4px; }
+
+        .option-btn:hover:not(:disabled) {
+            border-color: #bdc3c7;
+        }
+
+        .option-btn.selected:not(:disabled) {
+            border-color: var(--primary);
+            background-color: #ebf0f6;
+        }
+        
+        .option-btn.selected:not(:disabled)::before {
+            background-color: var(--primary);
+            border-color: var(--primary);
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white' width='14px' height='14px'%3E%3Cpath d='M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z'/%3E%3C/svg%3E");
+            background-position: center;
+            background-repeat: no-repeat;
+        }
+
+        .option-btn:disabled { cursor: not-allowed; }
+        
+        /* Colores post-evaluación */
+        .option-btn.correct { background-color: #e8f8f5 !important; border-color: var(--success) !important; color: #1e8449 !important; }
+        .option-btn.correct::before { background-color: var(--success); border-color: var(--success); background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white' width='14px' height='14px'%3E%3Cpath d='M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z'/%3E%3C/svg%3E"); }
+        
+        .option-btn.wrong { background-color: #fdedec !important; border-color: var(--error) !important; color: #c0392b !important; }
+        .option-btn.wrong::before { background-color: var(--error); border-color: var(--error); background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white' width='14px' height='14px'%3E%3Cpath d='M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z'/%3E%3C/svg%3E"); }
+
+        .feedback-box {
+            margin-top: 25px;
+            padding: 20px;
+            border-radius: 8px;
+            background-color: #f8f9fa;
+            display: none;
+            line-height: 1.5;
+            border-left: 5px solid var(--primary);
+        }
+
+        .feedback-box h3 { margin-top: 0; font-size: 1.1rem; }
+
+        .controls {
+            margin-top: 30px;
+            display: flex;
+            justify-content: flex-end;
+            gap: 15px;
+        }
+
+        .btn {
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            font-size: 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.2s, transform 0.1s;
+        }
+        .btn:active:not(:disabled) { transform: scale(0.98); }
+        .btn:disabled { background-color: #bdc3c7; cursor: not-allowed; opacity: 0.7; }
+
+        .primary-btn { background-color: var(--primary); }
+        .primary-btn:hover:not(:disabled) { background-color: var(--primary-hover); }
+        .accent-btn { background-color: var(--accent); }
+        .accent-btn:hover:not(:disabled) { background-color: #c23616; }
+        .eval-btn { background-color: #fbc531; color: #2f3640; }
+        .eval-btn:hover:not(:disabled) { background-color: #e1b12c; }
+
+        #results-screen { display: none; text-align: center; }
+        
+        .grade-container {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            margin: 30px 0;
+            flex-wrap: wrap;
+        }
+
+        .stat-box {
+            background-color: var(--bg-color);
+            padding: 20px 30px;
+            border-radius: 12px;
+            min-width: 150px;
+        }
+
+        .stat-value {
+            font-size: 3rem;
+            font-weight: bold;
+            color: var(--primary);
+            margin-bottom: 5px;
+        }
+        
+        .stat-value.grade-high { color: var(--success); }
+        .stat-value.grade-mid { color: #e1b12c; }
+        .stat-value.grade-low { color: var(--error); }
+
+        .stat-label { font-size: 1rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
+
+        #results-actions {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 30px;
+            flex-wrap: wrap;
+        }
+    </style>
+</head>
+<body>
+
+<div class="app-container" id="app">
+    <div id="quiz-screen">
+        <div class="header">
+            <h1>Simulador Hacking Ético (HE)</h1>
+            <div class="header-stats">
+                <span id="progress-indicator">Pregunta 1/30</span>
+                <span class="timer" id="timer-display">00:00</span>
+            </div>
+        </div>
+        
+        <div class="question-text" id="question-text">Cargando...</div>
+        <div class="question-hint" id="question-hint"></div>
+        
+        <div class="options-list single-choice" id="options-container"></div>
+
+        <div class="feedback-box" id="feedback-container">
+            <h3 id="feedback-title">Justificación</h3>
+            <div id="feedback-text"></div>
+        </div>
+
+        <div class="controls">
+            <button class="btn eval-btn" id="eval-btn" onclick="evaluateAnswer()" style="display:none;" disabled>Comprobar Respuesta</button>
+            <button class="btn primary-btn" id="next-btn" style="display: none;" onclick="nextQuestion()">Siguiente Pregunta ➔</button>
+        </div>
+    </div>
+
+    <div id="results-screen">
+        <h1 id="results-title">¡Examen Finalizado!</h1>
+        <p style="margin-top: 10px; color: var(--text-muted); font-size: 1.1rem;" id="results-message">Aquí tienes el resumen de tu rendimiento.</p>
+        
+        <div class="grade-container">
+            <div class="stat-box">
+                <div class="stat-value" id="final-grade">0.0</div>
+                <div class="stat-label">Nota (sobre 10)</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value" id="final-score" style="color: var(--text-main);">0/30</div>
+                <div class="stat-label">Aciertos</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value" id="final-time" style="color: var(--text-main);">00:00</div>
+                <div class="stat-label">Tiempo empleado</div>
+            </div>
+        </div>
+        
+        <div id="results-actions">
+            <button class="btn accent-btn" id="btn-retry-failed" style="display: none;" onclick="initFailedQuiz()">↻ Repetir Falladas</button>
+            <button class="btn primary-btn" onclick="initFullExam()">📝 Nuevo Examen Aleatorio</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // BASE DE DATOS HACKING ÉTICO (HE03, HE04, HE05)
+    const fullDb = [
+        // HE03
+        { q: "En la Fase de reconocimiento se pueden ejecutar técnicas de escaneo de vulnerabilidades. ¿Verdadero o Falso?", options: ["Verdadero", "Falso"], ans: [1], justification: "La fase de reconocimiento se centra en recopilar información (DNS, OSINT). El escaneo de vulnerabilidades pertenece a una fase posterior." },
+        { q: "Una shellcode de tipo Bind es adecuada para conseguir una shell remota en un equipo que se encuentra tras un firewall, ¿Verdadero o Falso?", options: ["Verdadero", "Falso"], ans: [1], justification: "Un firewall bloquea la conexión entrante de una Bind Shell. Para evadir firewalls se utiliza una Reverse Shell (tráfico saliente)." },
+        { q: "La enumeración SMTP nos permite verificar si una determinada cuenta de correo es válida ¿Verdadero o Falso?", options: ["Verdadero", "Falso"], ans: [0], justification: "Mediante la interacción en el puerto 25 y el uso de comandos como VRFY, EXPN o RCPT TO." },
+        { q: "Indica cuáles de los siguientes vectores nos permite elevar los privilegios en un sistema Linux.", options: ["Modificación de claves del registro.", "Escritura de cron.", "Binarios con ZUID.", "Binarios con SUID."], ans: [1, 3], justification: "Cron jobs mal configurados y binarios con el bit SUID activo. ZUID no existe y el registro es de Windows." },
+        { q: "Indica cuáles de las siguientes herramientas se utilizan para realizar un escaneo en frameworks específicos", options: ["CMSMap.", "Wpscan.", "nc.", "JoomScan."], ans: [0, 1, 3], justification: "WPScan, JoomScan y CMSMap son específicas para gestores de contenido. nc (Netcat) es una herramienta de red genérica." },
+        { q: "Indica cuál es el tipo de phishing en el que el intento de engaño se realiza a través de SMS:", options: ["Pharming.", "Smishing.", "Whaling.", "Vishing."], ans: [1], justification: "Es la contracción de SMS y Phishing. (Vishing es voz, Whaling directivos, Pharming DNS)." },
+        { q: "Indica el tipo de shellcode que utilizarías para establecer una shell en un sistema expuesto en internet de una compañía objetivo:", options: ["Shellcode local tipo reverse.", "Shellcode remota tipo bind.", "Shellcode local tipo bind.", "Shellcode remota tipo reverse."], ans: [1], justification: "Si el servidor está directamente expuesto a internet (sin firewall filtrando ese puerto), lo más directo y adecuado es usar una Bind Shell remota." },
+        { q: "La herramienta msfvenom dispone de los mismos exploits disponibles en la herramienta Metasploit, ¿Verdadero o Falso?", options: ["Verdadero", "Falso"], ans: [1], justification: "msfvenom no contiene exploits; está diseñada exclusivamente para la generación y ofuscación de payloads y shellcodes." },
+        { q: "Indica cuáles de las siguientes acciones son acciones englobadas en la metodología de phishing", options: ["Generar la campaña.", "Comprar dominios necesarios.", "Establecer el tipo de phishing.", "Recopilar datos del objetivo."], ans: [0, 1, 2, 3], justification: "Todas. Recopilar datos (OSINT), establecer el pretexto, adquirir infraestructura (dominios typosquatting) y enviar la campaña." },
+        { q: "En un reconocimiento activo se utilizan fuentes de terceros para obtener información del objetivo ¿Verdadero o Falso?", options: ["Verdadero", "Falso"], ans: [1], justification: "El uso de fuentes de terceros sin tocar los servidores del objetivo define el reconocimiento pasivo. El activo requiere interacción directa." },
+
+        // HE03 Modelo 2
+        { q: "La herramienta nmap se puede utilizar en la fase de escaneo de vulnerabilidades, ¿Verdadero o Falso?", options: ["Verdadero", "Falso"], ans: [0], justification: "Mediante el motor de scripts NSE (Nmap Scripting Engine) y scripts como vulscan." },
+        { q: "La herramienta nmap soporta varios tipos de escaneo TCP distintos para tratar de evadir los sitemas firewalls. ¿Verdadero o Falso?", options: ["Verdadero", "Falso"], ans: [0], justification: "Permite modificar las banderas (SYN, FIN, Xmas, Null, ACK) para evadir firewalls e IDS." },
+        { q: "¿Cuáles de los siguientes son vectores de acceso válidos en la fase de explotación?", options: ["Ejecución remota de comandos.", "Ejecución de un programa malintencionado (Malware).", "Explotación de una vulnerabilidad conocida.", "Contraseñas por defecto o poco robustas."], ans: [0, 1, 2, 3], justification: "RCE, malware, CVEs y contraseñas débiles son métodos válidos para conseguir el acceso inicial." },
+        { q: "Los tipos de exploits pueden clasificarse en Remotos o Locales, ¿Verdadero o Falso?", options: ["Verdadero", "Falso"], ans: [0], justification: "Remotos se lanzan a través de la red, Locales requieren un acceso previo (shell) y se usan para elevar privilegios." },
+        { q: "Indica cuál de los siguientes comandos nos permite ver las opciones de configuración de un módulo en Metasploit:", options: ["info.", "set.", "show.", "search."], ans: [2], justification: "El comando específico es 'show options'." },
+        { q: "Indica cuáles de las siguientes técnicas se pueden utilizar para realizar una interceptación de las comunicaciones (Ataque MitM):", options: ["ICMP Spoofing.", "SNMP Spoofing.", "Punto de Acceso falso.", "ARP Spoofing."], ans: [2, 3], justification: "ARP Spoofing en redes LAN cableadas/wifi y Puntos de Acceso Falso (Rogue AP) para redes inalámbricas." },
+        { q: "¿Qué es un payload?", options: ["Código encargado de explotar la vulnerabilidad.", "Código o set de instrucciones que se ejecutan una vez explotada la vulnerabilidad.", "Código de nmap.", "Código para comprobar si una vulnerabilidad existe."], ans: [1], justification: "El exploit abre la puerta aprovechando el fallo, y el payload es la carga útil que entra y se ejecuta." },
+        { q: "¿Qué es un Escaneo de servicios?", options: ["Escaneo de red IP y arquitectura.", "Obtención de posibles usuarios en el sistema.", "Comprobación de vulnerabilidades.", "Un escaneo que tiene como objetivo identificar qué puertos están abiertos, qué servicio se ejecuta en ellos y su versión exacta."], ans: [3], justification: "El parámetro -sV en nmap identifica el software y su versión exacta en los puertos abiertos." },
+        { q: "Los payloads de tipo Staged se transmiten en varias partes para evitar posibles bloqueos. ¿Verdadero o Falso?", options: ["Verdadero", "Falso"], ans: [0], justification: "Se envía un 'stager' muy pequeño para caber en el buffer y evadir antivirus, que luego descarga el resto ('stage')." },
+        { q: "Un escaneo de red permite localizar vulnerabilidades basadas en el software y versión de un servicio, ¿Verdadero o Falso?", options: ["Verdadero", "Falso"], ans: [1], justification: "Un escaneo de red básico (-sn) solo localiza equipos activos. Hace falta escaneo de servicios (-sV) y luego de vulnerabilidades." },
+
+        // HE04
+        { q: "Indica que es lo que hace la técnica del Pivoting SSH:", options: ["Inicia un proxy Local en el equipo del atacante y tuneliza a la víctima.", "Inicia un proxy Remoto en el equipo del atacante y tuneliza a la víctima.", "Inicia un proxy Remoto en la víctima y tuneliza al atacante.", "Inicia un proxy Local en la víctima y tuneliza al atacante."], ans: [0], justification: "Mediante el parámetro -D en SSH, levanta un puerto local (SOCKS proxy) en la máquina del auditor hacia la máquina comprometida." },
+        { q: "¿Cuáles de las siguientes NO es una característica propia de meterpreter?", options: ["Permite cifrar el disco de la víctima (Simulación de ransomware).", "Permite utilizar la máquina víctima como pivoting.", "Permite Elevar privilegios.", "Permite la carga dinámica de módulos."], ans: [0], justification: "Meterpreter es una shell avanzada en memoria para auditorías; no incluye funcionalidades de cifrado de disco o ransomware." },
+        { q: "Indica cuáles son los motivos por los que utilizar un servidor C2 en la fase de persistencia.", options: ["Permiten manejar varias shells a la vez.", "Permiten tener un punto de fallo.", "Permiten poder establecer una comunicación con las shells remotas.", "Permiten elevar privilegios más fácilmente."], ans: [0, 2], justification: "Los servidores de Comando y Control (C2) están diseñados para recibir conexiones entrantes de múltiples agentes y mantener canales persistentes." },
+        { q: "Las tareas de pivoting son propias de la fase de explotación. ¿Verdadero o Falso?", options: ["Verdadero", "Falso"], ans: [1], justification: "Falso. El pivoting (movimiento lateral) es una técnica propia de la fase de Postexplotación (requiere un equipo ya comprometido)." },
+        { q: "Indica de qué manera puedes utilizar un servidor proxy:", options: ["Utilizando clientes específicos para proxy como proxychains.", "Utilizando una cadena de certificados.", "Utilizando el navegador Web indicando que nos conectaremos a través de un proxy.", "Configurando el proxy como la puerta de enlace por defecto."], ans: [0, 2], justification: "Configurando el navegador web manualmente o utilizando wrappers como 'proxychains' para enrutar cualquier herramienta." },
+        { q: "¿Indica cuál de las siguientes afirmaciones es cierta para la herramienta hashcat?", options: ["Hashcat tiene que utilizar algoritmos de hashing para generar el hash de posibles contraseñas.", "Siempre tarda el mismo tiempo.", "Dispone de funciones para revertir un hash matemáticamente.", "Utiliza rainbow tables."], ans: [0], justification: "Los hashes no se pueden revertir matemáticamente, por lo que hashcat genera el hash de las contraseñas probables para compararlo con el objetivo." },
+        { q: "Indica cuales de las siguientes técnicas se utilizan para realizar ataques contra las contraseñas:", options: ["Proceso de cracking de contraseñas.", "Rainbow Tables.", "Ataques de fuerza bruta en la autenticación (online).", "Contraseñas por defecto."], ans: [0, 1, 2, 3], justification: "Los ataques offline (cracking, rainbow tables), online (fuerza bruta) y uso de contraseñas por defecto son técnicas estándar." },
+        { q: "Si utilizamos pivoting con meterpreter, para usar el pivot con herramientas fuera de Metasploit (como nmap) habrá que iniciar un proxy en el propio Metasploit, ¿Verdadero o Falso?", options: ["Verdadero", "Falso"], ans: [0], justification: "Es necesario configurar el autoroute y levantar un módulo auxiliar de servidor SOCKS en Metasploit." },
+        { q: "Indica cuál es la afirmación correcta que describe los módulos de tipo 'Auxiliary' en Metasploit:", options: ["Módulos que realizan la explotación de vulnerabilidades.", "Apoyo en actividades posteriores a la explotación.", "Modifican código para evadir Antivirus.", "Módulos de apoyo que proporcionan herramientas propias de la Fase de Enumeración, Escaneo y ataques de fuerza bruta."], ans: [3], justification: "No ejecutan payloads. Se usan para escanear puertos, buscar directorios o hacer fuerza bruta (ej. SMB Login)." },
+        { q: "¿En qué Sistemas operativos puede utilizarse el payload meterpreter?", options: ["Microsoft Windows.", "iOS.", "Android.", "Linux."], ans: [0, 1, 2, 3], justification: "Es un payload universal y multiplataforma con versiones para Windows, Linux, Android (Java), iOS (ARM), etc." },
+
+        // HE04 Modelo 2
+        { q: "Indica cuales de los siguientes son tipos de persistencia comunes:", options: ["Persistencia en registro.", "Persistencia en CRON.", "Persistencia en servicio.", "Persistencia en Tareas programadas."], ans: [0, 1, 2, 3], justification: "Todos son vectores de persistencia estándar para mantener el acceso tras un reinicio del sistema operativo." },
+        { q: "Las contraseñas por defecto de muchos dispositivos pueden encontrarse en los propios manuales del producto, ¿Verdadero o Falso?", options: ["Verdadero", "Falso"], ans: [0], justification: "Los fabricantes documentan credenciales iniciales. La falta de cambio es una vulnerabilidad crítica." },
+        { q: "Indica cuál de los siguientes requerimientos es necesario para poder realizar la técnica del pivoting HTTP:", options: ["Hay que utilizar HTTPS.", "Certificado firmado.", "Hay que utilizar HTTP.", "Hay que subir un agente a un aplicativo web comprometido."], ans: [3], justification: "Requiere inyectar una Web Shell (agente) en el servidor víctima para tunelizar el tráfico TCP de la red interna." },
+        { q: "Indica cuáles de las afirmaciones son correctas a la hora de configurar el multihandler de Metasploit como C2:", options: ["Iniciar el multihandler como job de metasploit para múltiples shells a la vez.", "El Multihandler ha de tener la misma configuración que la shell remota (IP, Puerto y Payload).", "Puede utilizar un Payload distinto al que utilice la shell remota.", "Indicar que no se detenga tras la primera comunicación con la shell (ExitOnSession false)."], ans: [0, 1, 3], justification: "Debe ser un job (-j), con la misma configuración exacta de payload/IP/Puerto, y set ExitOnSession false." },
+        { q: "Indica cuáles de los siguientes requisitos son necesarios para poder realizar un ataque de Password guessing:", options: ["Utilizar aplicaciones de hashing.", "Disponer de un listado de posibles contraseñas.", "Utilizar aplicaciones de fuerza bruta.", "Disponer de un listado de nombres de usuario."], ans: [1, 3], justification: "El guessing es un ataque 'online' sutil; requiere listas de usuarios y diccionarios probables. No requiere hashing (offline) ni fuerza bruta masiva (ruidosa)." },
+        { q: "Para poder ejecutar la persistencia necesitamos un servidor de tipo C2 obligatoriamente. ¿Verdadero o Falso?", options: ["Verdadero", "Falso"], ans: [1], justification: "Falso. Hay persistencias locales (como crear un usuario administrador o habilitar RDP) que no requieren un servidor C2 escuchando." },
+        { q: "Para poder utilizar técnicas de pivoting necesitamos tener previamente el control de una máquina víctima, ¿Verdadero o Falso?", options: ["Verdadero", "Falso"], ans: [0], justification: "El pivoting (movimiento lateral) consiste en usar un equipo ya comprometido para acceder al resto de la red interna." },
+        { q: "Las técnicas de Password Cracking pueden provocar bloqueos de cuentas de usuario, ¿Verdadero o Falso?", options: ["Verdadero", "Falso"], ans: [1], justification: "Falso. El cracking es offline contra hashes extraídos, no interactúa con el servidor de autenticación en vivo." },
+        { q: "En las técnicas de Password Guessing hay que utilizar un diccionario que no sea muy extenso. ¿Verdadero o Falso?", options: ["Verdadero", "Falso"], ans: [0], justification: "Un diccionario gigante generaría alertas en los firewalls y provocaría el bloqueo de la cuenta por excesivos intentos fallidos." },
+        { q: "¿Qué es una rainbow table?", options: ["Un listado que únicamente contiene hashes.", "Listados de correos obtenidos de leaks.", "Listados de contraseñas en claro precalculadas junto con su hash en algoritmos específicos.", "Listados de usuario:contraseñas."], ans: [2], justification: "Bases de datos masivas precalculadas para revertir hashes instantáneamente sacrificando espacio en disco." },
+
+        // HE05
+        { q: "La cabecera 'set-cookie' es una cabecera propia de la respuesta HTTP. ¿Verdadero o Falso?", options: ["Verdadero", "Falso"], ans: [0], justification: "El servidor la utiliza en la Respuesta para indicarle al navegador del cliente que almacene una cookie (ej. tras autenticarse)." },
+        { q: "El atributo de las cookies 'HttpOnly' disminuye el riesgo en caso de localizar una vulnerabilidad de tipo Cross Site Scripting. ¿Verdadero o Falso?", options: ["Verdadero", "Falso"], ans: [0], justification: "Impide que la cookie (identificador de sesión) sea accedida mediante código JavaScript del lado del cliente." },
+        { q: "¿Cuáles de las siguientes técnicas se pueden utilizar para detectar paneles de administración expuestos?", options: ["Enumeración de directorios.", "Monitorizar cabeceras 'Server'.", "Google Dorks.", "Fuerza bruta en el formulario de inicio de sesión."], ans: [0, 2], justification: "La enumeración y el uso de operadores avanzados de búsqueda (Google Dorks) ayudan a descubrir estas rutas ocultas." },
+        { q: "Las vulnerabilidades de lógica de negocio tienen la misma criticidad en cualquier aplicativo y no dependen de sus datos. ¿Verdadero o Falso?", options: ["Verdadero", "Falso"], ans: [1], justification: "Falso. Dependen totalmente del contexto. No es lo mismo alterar un carrito de la compra online que evadir comisiones en un banco." },
+        { q: "Indica cuáles de estas vulnerabilidades son vulnerabilidades que afectan al cliente de un aplicativo web:", options: ["Cross Site Scripting almacenado.", "HTTP Splitting.", "Escalada de privilegios."], ans: [0, 1], justification: "El XSS se ejecuta en el navegador de la víctima. El HTTP Splitting manipula la respuesta que recibe el navegador." },
+        { q: "Indica cuáles de estas vulnerabilidades son vulnerabilidades que afectan al servidor de un aplicativo web:", options: ["Inyección remota de código.", "Bloqueo de la cuenta de usuario.", "Suplantación de identidad.", "Denegación de servicio."], ans: [0, 3], justification: "RCE y DoS afectan directamente al sistema operativo, recursos o disponibilidad del backend/servidor." },
+        { q: "¿Cuál es la función del Modelo en la arquitectura Modelo Vista Controlador?", options: ["Operaciones lógicas de la aplicación.", "Gestiona y mantiene los datos, apoyándose en la Base de Datos.", "Representación visual de los datos.", "Recoger datos de usuarios."], ans: [1], justification: "En el patrón MVC, el Modelo encapsula la lógica de datos, la Vista la presentación, y el Controlador el flujo." },
+        { q: "La vulnerabilidad de Cross Site Scripting Almacenado se considera una vulnerabilidad persistente. ¿Verdadero o Falso?", options: ["Verdadero", "Falso"], ans: [0], justification: "El payload malicioso queda guardado en la BD y se ejecuta automáticamente al visitar la página." },
+        { q: "Indica cuáles de las siguientes se consideran vulnerabilidades de lógica de negocio:", options: ["Generar códigos de descuento en una tienda online.", "Ejecutar comandos en el SO de manera remota.", "Hacerse pasar por otro usuario legítimo.", "Enviar transferencias internacionales evitando pagar la comisión."], ans: [0, 3], justification: "Son aquellas que abusan del diseño de los flujos del proceso de negocio legítimo, no de fallos de inyección técnica." },
+        { q: "¿Para qué se utiliza un servidor proxy como Burp Suite a la hora de realizar un análisis web?", options: ["Para evitar ser rastreado.", "Para navegar más rápido.", "Para poder interceptar y modificar peticiones HTTP.", "A modo de VPN."], ans: [2], justification: "Es un proxy de interceptación; se sitúa en medio para auditar y manipular peticiones y respuestas al vuelo." },
+
+        // HE05 Modelo 2
+        { q: "En un aplicativo, la capa del controlador es con la que interactúa un usuario. ¿Verdadero o Falso?", options: ["Verdadero", "Falso"], ans: [1], justification: "Falso. El usuario interactúa visualmente y de forma directa con la Vista (el código HTML renderizado)." },
+        { q: "Indica cuáles de las siguientes afirmaciones sobre el Cross Site Scripting Reflejado son correctas:", options: ["En ningún momento se guarda en el servidor, requiere enviar enlace a usuarios.", "El código se almacena en el servidor de forma persistente.", "Inyecta código JavaScript que será ejecutado en el navegador si no hay validación.", "Es persistente y afecta al servidor."], ans: [0, 2], justification: "El XSS Reflejado es no persistente (el payload viaja en la URL) y afecta al navegador web del cliente." },
+        { q: "Indica cuáles se corresponden con características de un proxy de interceptación HTTP:", options: ["Permiten modificar la petición HTTP antes de enviarla.", "Interceptan toda la comunicación situándose en medio.", "Permiten modificar la respuesta HTTP antes de ser interpretada por navegador.", "Permiten conocer si un usuario existe o no."], ans: [0, 1, 2], justification: "BurpSuite intercepta todo el tráfico bidireccionalmente permitiendo manipulación al vuelo de headers y body." },
+        { q: "Indica cuál de las siguientes afirmaciones NO es correcta sobre el Cross Site Scripting Almacenado:", options: ["El usuario ejecuta el código al visualizar la información.", "Se produce por mala validación de datos de entrada.", "Tiene un valor CVSS más bajo que un XSS Reflejado.", "El código inyectado se almacena en el aplicativo vulnerable."], ans: [2], justification: "Es FALSO que tenga CVSS más bajo. El XSS Almacenado suele ser MÁS crítico ya que impacta indiscriminadamente a los visitantes de forma automática." },
+        { q: "¿Cuál de las siguientes medidas es la más indicada para contener ataques automatizados de tipo fuerza bruta en un aplicativo web?", options: ["Bloquear la dirección IP atacante.", "Mantener los sistemas actualizados.", "Bloquear usuarios tras 3 intentos.", "Utilizar un sistema de tipo Captcha."], ans: [3], justification: "El CAPTCHA previene y contiene la automatización desde el primer intento (evitando que el ataque sature el servicio o bloquee cuentas)." },
+        { q: "¿Qué son los parámetros de una petición HTTP?", options: ["Ruta dentro del dominio.", "Datos que indican la versión del navegador.", "Protegen los identificadores de sesión.", "Es un par clave/valor que utiliza el protocolo HTTP para entregar datos de entrada."], ans: [3], justification: "Variables (como nombre=pedro&id=1) enviadas por GET o POST a la funcionalidad del servidor." },
+        { q: "¿Qué herramienta nos permite obtener rápidamente las tecnologías, librerías y frameworks de un aplicativo web?", options: ["Joomscan", "Whatweb", "Wpscan", "CMSMap"], ans: [1], justification: "WhatWeb identifica componentes y la huella digital (stack) de cualquier aplicativo, no solo CMS específicos." },
+        { q: "¿Qué indican los códigos de estado de tipo 500 del protocolo HTTP?", options: ["Errores causados por el servidor.", "Respuestas correctas.", "Errores causados por el cliente.", "Redirecciones."], ans: [0], justification: "La familia 5xx indica que el servidor falló al procesar una petición válida." },
+        { q: "Validando los datos introducidos por el usuario (parámetros) estamos tratando de evitar:", options: ["Inyección SQL.", "HTTP Splitting.", "Cross Site Scripting.", "Vulnerabilidades de la lógica de negocio."], ans: [0, 2], justification: "La inyección SQL y el XSS ocurren precisamente cuando la aplicación confía ciegamente en caracteres especiales introducidos por el usuario." },
+        { q: "¿Qué indica el error HTTP de tipo 403 devuelto por el servidor?", options: ["Redirect.", "Forbidden - La página solicitada existe pero no tienes privilegios.", "Service Unavailable.", "Not Found."], ans: [1], justification: "Error de autorización. El cliente ha sido autenticado pero no tiene permisos para el recurso concreto." }
+    ];
+
+    let currentQueue = [];
+    let failedQueue = [];
+    let currentQuestionIndex = 0;
+    let score = 0;
+    let currentSelection = [];
+    
+    // Variables temporizador
+    let startTime;
+    let timerInterval;
+
+    // Elementos DOM
+    const questionTextEl = document.getElementById('question-text');
+    const questionHintEl = document.getElementById('question-hint');
+    const optionsContainer = document.getElementById('options-container');
+    const progressEl = document.getElementById('progress-indicator');
+    const feedbackBox = document.getElementById('feedback-container');
+    const feedbackText = document.getElementById('feedback-text');
+    const feedbackTitle = document.getElementById('feedback-title');
+    const evalBtn = document.getElementById('eval-btn');
+    const nextBtn = document.getElementById('next-btn');
+    const quizScreen = document.getElementById('quiz-screen');
+    const resultsScreen = document.getElementById('results-screen');
+    const timerDisplay = document.getElementById('timer-display');
+    const finalGradeEl = document.getElementById('final-grade');
+
+    function startTimer() {
+        startTime = Date.now();
+        timerInterval = setInterval(() => {
+            let diff = Date.now() - startTime;
+            let m = Math.floor(diff / 60000);
+            let s = Math.floor((diff % 60000) / 1000);
+            timerDisplay.innerText = (m < 10 ? '0'+m : m) + ':' + (s < 10 ? '0'+s : s);
+        }, 1000);
+    }
+
+    function stopTimer() {
+        clearInterval(timerInterval);
+    }
+
+    function initFullExam() {
+        let sliceLimit = fullDb.length > 30 ? 30 : fullDb.length;
+        currentQueue = [...fullDb].sort(() => Math.random() - 0.5).slice(0, sliceLimit);
+        failedQueue = [];
+        startRonda();
+    }
+
+    function initFailedQuiz() {
+        currentQueue = [...failedQueue].sort(() => Math.random() - 0.5);
+        failedQueue = []; 
+        startRonda();
+    }
+
+    function startRonda() {
+        currentQuestionIndex = 0;
+        score = 0;
+        hasAnswered = false;
+        quizScreen.style.display = 'block';
+        resultsScreen.style.display = 'none';
+        
+        clearInterval(timerInterval);
+        timerDisplay.innerText = "00:00";
+        startTimer();
+        
+        loadQuestion();
+    }
+
+    function loadQuestion() {
+        hasAnswered = false;
+        currentSelection = [];
+        feedbackBox.style.display = 'none';
+        nextBtn.style.display = 'none';
+        optionsContainer.innerHTML = '';
+        
+        const qData = currentQueue[currentQuestionIndex];
+        const isMultiple = qData.ans.length > 1;
+        
+        progressEl.innerText = `Pregunta ${currentQuestionIndex + 1}/${currentQueue.length}`;
+        questionTextEl.innerText = qData.q;
+        
+        // Comportamiento Dual según tipo de pregunta
+        if (isMultiple) {
+            questionHintEl.innerText = "⚠️ Múltiple selección. Elige todas las opciones correctas y pulsa 'Comprobar Respuesta'.";
+            optionsContainer.className = "options-list multi-choice";
+            evalBtn.style.display = 'inline-block';
+            evalBtn.disabled = true; // Desactivado hasta que seleccione algo
+        } else {
+            questionHintEl.innerText = "⭐ Selecciona la única respuesta correcta.";
+            optionsContainer.className = "options-list single-choice";
+            evalBtn.style.display = 'none'; // Se oculta porque evalúa directo
+        }
+
+        // Cargar botones de opciones
+        qData.options.forEach((opt, index) => {
+            const btn = document.createElement('button');
+            btn.className = 'option-btn';
+            btn.innerText = opt;
+            btn.onclick = () => toggleOption(index, btn, isMultiple);
+            optionsContainer.appendChild(btn);
+        });
+    }
+
+    function toggleOption(index, btnElement, isMultiple) {
+        if (hasAnswered) return; // Si ya evaluó, bloquear clics
+
+        if (!isMultiple) {
+            // == MODO RESPUESTA ÚNICA ==
+            currentSelection = [index];
+            btnElement.classList.add('selected');
+            evaluateAnswer(); // Auto-evaluación instantánea
+        } else {
+            // == MODO RESPUESTA MÚLTIPLE ==
+            if (currentSelection.includes(index)) {
+                currentSelection = currentSelection.filter(i => i !== index);
+                btnElement.classList.remove('selected');
+            } else {
+                currentSelection.push(index);
+                btnElement.classList.add('selected');
+            }
+            // Habilitar o deshabilitar botón de comprobar
+            evalBtn.disabled = currentSelection.length === 0;
+        }
+    }
+
+    function evaluateAnswer() {
+        hasAnswered = true;
+        const qData = currentQueue[currentQuestionIndex];
+        const buttons = optionsContainer.children;
+
+        // Deshabilitar botones para evitar cambios post-evaluación
+        for (let btn of buttons) {
+            btn.disabled = true;
+        }
+        evalBtn.style.display = 'none'; // Ocultar botón comprobar
+
+        // Comprobar si los arrays coinciden exactamente
+        let sortedSelection = [...currentSelection].sort();
+        let sortedAnswers = [...qData.ans].sort();
+        
+        let isCorrect = (sortedSelection.length === sortedAnswers.length) && 
+                        sortedSelection.every((val, index) => val === sortedAnswers[index]);
+
+        if (isCorrect) {
+            score++;
+            feedbackTitle.innerText = "¡Correcto! - Justificación:";
+            feedbackTitle.style.color = "var(--success)";
+        } else {
+            feedbackTitle.innerText = "Incorrecto - Justificación:";
+            feedbackTitle.style.color = "var(--error)";
+            // Añadir a falladas
+            failedQueue.push(qData);
+        }
+        
+        // Colorear botones para feedback visual
+        for (let i = 0; i < buttons.length; i++) {
+            if (qData.ans.includes(i)) {
+                // Era una respuesta correcta obligatoria
+                buttons[i].classList.add('correct');
+            } else if (currentSelection.includes(i)) {
+                // Fue seleccionada por el usuario pero era incorrecta
+                buttons[i].classList.add('wrong');
+            }
+        }
+
+        feedbackText.innerText = qData.justification;
+        feedbackBox.style.display = 'block';
+        
+        if (currentQuestionIndex < currentQueue.length - 1) {
+            nextBtn.innerText = "Siguiente Pregunta ➔";
+        } else {
+            nextBtn.innerText = "Ver Calificación ➔";
+        }
+        nextBtn.style.display = 'inline-block';
+    }
+
+    function nextQuestion() {
+        currentQuestionIndex++;
+        if (currentQuestionIndex < currentQueue.length) {
+            loadQuestion();
+        } else {
+            showResults();
+        }
+    }
+
+    function showResults() {
+        stopTimer();
+        quizScreen.style.display = 'none';
+        resultsScreen.style.display = 'block';
+        
+        document.getElementById('final-score').innerText = `${score}/${currentQueue.length}`;
+        document.getElementById('final-time').innerText = timerDisplay.innerText;
+        
+        // Nota final sobre 10
+        let grade = (score / currentQueue.length) * 10;
+        finalGradeEl.innerText = grade.toFixed(2);
+        
+        // Colores nota final
+        finalGradeEl.className = "stat-value";
+        if(grade >= 8.5) finalGradeEl.classList.add('grade-high');
+        else if(grade >= 5.0) finalGradeEl.classList.add('grade-mid');
+        else finalGradeEl.classList.add('grade-low');
+
+        const resTitle = document.getElementById('results-title');
+        const resMessage = document.getElementById('results-message');
+        const btnRetryFailed = document.getElementById('btn-retry-failed');
+
+        if (failedQueue.length > 0) {
+            btnRetryFailed.style.display = 'inline-block';
+            resTitle.innerText = "¡Toca fortalecer conceptos!";
+            resMessage.innerText = `Has obtenido un ${grade.toFixed(2)} sobre 10. Las preguntas con múltiples opciones son difíciles, repasa tus ${failedQueue.length} fallos.`;
+        } else {
+            btnRetryFailed.style.display = 'none';
+            resTitle.innerText = "¡Hacker de Élite!";
+            resMessage.innerText = "¡Enhorabuena, un examen perfecto! Dominas la ofensiva y la defensiva al 100%.";
+        }
+    }
+
+    // Arrancar aplicación
+    window.onload = initFullExam;
+</script>
+
+</body>
+</html>

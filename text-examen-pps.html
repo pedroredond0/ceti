@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador Puesta en Producción Segura (PPS)</title>
+    <style>
+        :root {
+            --primary: #4a148c; /* Morado oscuro para diferenciar la asignatura */
+            --primary-hover: #380b6e;
+            --secondary: #6c757d;
+            --secondary-hover: #5a6268;
+            --bg-color: #f3f0f7;
+            --card-bg: #ffffff;
+            --text-main: #333333;
+            --text-muted: #7f8c8d;
+            --success: #2e7d32;
+            --error: #c62828;
+            --accent: #e65100;
+            --border-radius: 12px;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .app-container {
+            background-color: var(--card-bg);
+            max-width: 850px;
+            width: 100%;
+            border-radius: var(--border-radius);
+            box-shadow: 0 10px 30px rgba(74, 20, 140, 0.1);
+            padding: 40px;
+            box-sizing: border-box;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #e1d8ea;
+            padding-bottom: 15px;
+            margin-bottom: 30px;
+        }
+
+        h1 { margin: 0; font-size: 1.6rem; color: var(--primary); }
+        
+        .header-stats {
+            display: flex;
+            gap: 20px;
+            font-weight: 600;
+            color: var(--text-muted);
+            align-items: center;
+        }
+
+        .timer {
+            background-color: #ede7f6;
+            padding: 6px 12px;
+            border-radius: 6px;
+            color: var(--primary);
+            font-family: monospace;
+            font-size: 1.1rem;
+        }
+
+        .question-text {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 25px;
+            line-height: 1.5;
+        }
+
+        .options-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .option-btn {
+            background-color: var(--bg-color);
+            border: 2px solid transparent;
+            padding: 16px 20px;
+            border-radius: 8px;
+            font-size: 1rem;
+            text-align: left;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: var(--text-main);
+            font-family: inherit;
+        }
+
+        .option-btn:hover:not(:disabled) {
+            border-color: var(--primary);
+            background-color: #e8e2f0;
+        }
+
+        .option-btn:disabled { cursor: not-allowed; }
+        
+        .option-btn.correct { background-color: #e8f5e9; border-color: var(--success); color: #1b5e20; }
+        .option-btn.wrong { background-color: #ffebee; border-color: var(--error); color: #b71c1c; }
+
+        .feedback-box {
+            margin-top: 25px;
+            padding: 20px;
+            border-radius: 8px;
+            background-color: #fafafa;
+            display: none;
+            line-height: 1.5;
+            border-left: 5px solid var(--primary);
+        }
+
+        .feedback-box h3 { margin-top: 0; font-size: 1.1rem; }
+
+        .controls {
+            margin-top: 30px;
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .btn {
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            font-size: 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.2s, transform 0.1s;
+        }
+        .btn:active { transform: scale(0.98); }
+
+        .primary-btn { background-color: var(--primary); }
+        .primary-btn:hover { background-color: var(--primary-hover); }
+        .accent-btn { background-color: var(--accent); }
+        .accent-btn:hover { background-color: #bf360c; }
+
+        #results-screen { display: none; text-align: center; }
+        
+        .grade-container {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            margin: 30px 0;
+            flex-wrap: wrap;
+        }
+
+        .stat-box {
+            background-color: var(--bg-color);
+            padding: 20px 30px;
+            border-radius: 12px;
+            min-width: 150px;
+        }
+
+        .stat-value {
+            font-size: 3rem;
+            font-weight: bold;
+            color: var(--primary);
+            margin-bottom: 5px;
+        }
+        
+        .stat-value.grade-high { color: var(--success); }
+        .stat-value.grade-mid { color: var(--accent); }
+        .stat-value.grade-low { color: var(--error); }
+
+        .stat-label { font-size: 1rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
+
+        #results-actions {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 30px;
+            flex-wrap: wrap;
+        }
+    </style>
+</head>
+<body>
+
+<div class="app-container" id="app">
+    <!-- Pantalla de Preguntas -->
+    <div id="quiz-screen">
+        <div class="header">
+            <h1>Simulador PPS - T4 y T5</h1>
+            <div class="header-stats">
+                <span id="progress-indicator">Pregunta 1/30</span>
+                <span class="timer" id="timer-display">00:00</span>
+            </div>
+        </div>
+        
+        <div class="question-text" id="question-text">Cargando...</div>
+        <div class="options-list" id="options-container"></div>
+
+        <div class="feedback-box" id="feedback-container">
+            <h3 id="feedback-title">Justificación</h3>
+            <div id="feedback-text"></div>
+        </div>
+
+        <div class="controls">
+            <button class="btn primary-btn" id="next-btn" style="display: none;" onclick="nextQuestion()">Siguiente Pregunta ➔</button>
+        </div>
+    </div>
+
+    <!-- Pantalla de Resultados -->
+    <div id="results-screen">
+        <h1 id="results-title">¡Examen Finalizado!</h1>
+        <p style="margin-top: 10px; color: var(--text-muted); font-size: 1.1rem;" id="results-message">Aquí tienes el resumen de tu rendimiento.</p>
+        
+        <div class="grade-container">
+            <div class="stat-box">
+                <div class="stat-value" id="final-grade">0.0</div>
+                <div class="stat-label">Nota (sobre 10)</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value" id="final-score" style="color: var(--text-main);">0/30</div>
+                <div class="stat-label">Aciertos</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value" id="final-time" style="color: var(--text-main);">00:00</div>
+                <div class="stat-label">Tiempo empleado</div>
+            </div>
+        </div>
+        
+        <div id="results-actions">
+            <button class="btn accent-btn" id="btn-retry-failed" style="display: none;" onclick="initFailedQuiz()">↻ Repetir Falladas</button>
+            <button class="btn primary-btn" onclick="initFullExam()">📝 Nuevo Examen de 30 Preguntas</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // BASE DE DATOS PUESTA EN PRODUCCIÓN SEGURA (T4 y T5)
+    const fullDb = [
+        // TEMA 4
+        { q: "¿Qué es GDPR?", options: ["Estándar de comunicación de los dispositivos móviles.", "Función especial de iOS.", "Tipo de protocolo.", "Reglamento General de Protección de Datos."], ans: 3, justification: "El GDPR es el marco normativo a nivel europeo que regula el tratamiento y la protección de los datos personales." },
+        { q: "¿De qué manera suele funcionar la tecnología de CASB?", options: ["Mediante conexión síncrona.", "Mediante un dispositivo especial.", "Modo nube.", "Agente instalado en el dispositivo."], ans: 3, justification: "A nivel técnico, la mayoría de estas soluciones operan mediante un agente que reside en el terminal y recibe centralizadamente las políticas." },
+        { q: "¿Qué llave se usa en algunos sistemas operativos de móviles para cifrar?", options: ["Código de desbloqueo o datos biométricos.", "Nombre de usuario.", "La llave se genera en tiempo real.", "Fecha de nacimiento del usuario."], ans: 0, justification: "La información proporcionada por el usuario (clave, huella dactilar o reconocimiento facial) se utiliza como la clave necesaria para descifrar el sistema de ficheros." },
+        { q: "¿Es recomendable almacenar contraseñas y datos personales por parte de las aplicaciones móviles?", options: ["No deberían realizar este tipo de acción.", "Sí, según el tipo de dato manejado por la aplicación.", "No.", "Si, siempre."], ans: 1, justification: "El temario asume que las aplicaciones sí van a almacenar datos personales y por eso insiste en que se deben usar herramientas como Keystore (Android) o Keychain (iOS) para cifrarlos y cumplir con el GDPR." },
+        { q: "No supone un problema que los empleados usen sus teléfonos personales para tareas corporativas. ¿Verdadero o falso?", options: ["Verdadero", "Falso"], ans: 1, justification: "El uso de dispositivos personales (BYOD) conlleva riesgos significativos, como la pérdida de trazabilidad y control de la información." },
+        { q: "Las apps de Android funcionan todas con el mismo usuario. ¿Verdadero o falso?", options: ["Verdadero", "Falso"], ans: 1, justification: "En Android, cada aplicación se ejecuta bajo un usuario específico e individual creado exclusivamente para ella; es en iOS donde las aplicaciones comparten el usuario 'mobile'." },
+        { q: "Uno de los mayores riesgos de las aplicaciones es:", options: ["Que no estén firmadas digitalmente.", "Que se bajen de tiendas no oficiales.", "Todas las anteriores.", "Instalarlas sin la autorización del usuario."], ans: 2, justification: "La seguridad se ve comprometida tanto por la descarga en tiendas no oficiales como por la ausencia de firmas digitales que verifiquen la integridad." },
+        { q: "¿Qué significa UEBA?", options: ["User Endpoint Behaviour Analysis.", "User and Entity Behaviour Analysis.", "User and Entity Behaviour Analytics.", "User Endpoint Behaviour Analytics."], ans: 2, justification: "Son las siglas de User and Entity Behaviour Analytics, referidas al análisis avanzado de patrones de comportamiento." },
+        { q: "Existe una única versión de la tecnología CASB y cada fabricante la implementa según considere. ¿Verdadero o falso?", options: ["Verdadero", "Falso"], ans: 1, justification: "Falso. No existe una solución 'definitiva' o única; la tecnología evoluciona constantemente para adaptarse a nuevos ataques." },
+        { q: "¿Cuál de las siguientes se considera una forma de limitar las capacidades de una aplicación en un dispositivo móvil?", options: ["Chrooting.", "Jailbreak.", "Permisos.", "Conectividad."], ans: 2, justification: "El sistema de permisos es el mecanismo principal para controlar y restringir el acceso de las aplicaciones a funciones sensibles." },
+        
+        // TEMA 4 - Modelo 2
+        { q: "Los permisos especiales de iOS están firmados digitalmente. ¿Verdadero o falso?", options: ["Verdadero", "Falso"], ans: 0, justification: "Verdadero. iOS utiliza firmas digitales para validar las aplicaciones y sus permisos especiales (entitlements)." },
+        { q: "¿Qué usuario es el que esta corriendo las apps de iOS?", options: ["Usuario original.", "Usuario raíz.", "mobile.", "Aleatorio basado en el UUID."], ans: 2, justification: "A diferencia de Android, en iOS las aplicaciones corren de forma estándar bajo el usuario del sistema llamado 'mobile'." },
+        { q: "¿Qué es el sandboxing en el contexto de la seguridad de las aplicaciones móviles?", options: ["Imagen virtual de emulación de aplicaciones.", "Entorno aislado y controlado.", "Proceso de emulación de malware.", "Sistema nativo de aplicaciones."], ans: 1, justification: "El Sandboxing asegura que cada aplicación se ejecute en un entorno aislado y controlado para evitar que acceda a los datos de otras apps." },
+        { q: "La keystore es usada por los sistemas operativos iOS para gestionar contraseñas. ¿Verdadero o falso?", options: ["Verdadero", "Falso"], ans: 1, justification: "Falso. La Keystore es propia del ecosistema Android. En iOS, el sistema equivalente para almacenar secretos es el Keychain." },
+        { q: "CASB aporta visibilidad sobre entornos de nube. ¿Verdadero o falso?", options: ["Verdadero", "Falso"], ans: 0, justification: "Verdadero. CASB (Cloud Access Security Broker) sirve exactamente para dar visibilidad, cumplimiento y seguridad en entornos Cloud." },
+        { q: "Los sistemas de CASB tienen el objetivo de aportar visibilidad. ¿Verdadero o falso?", options: ["Verdadero", "Falso"], ans: 0, justification: "Verdadero. Uno de los pilares de cualquier CASB es descubrir el Shadow IT y aportar visibilidad total de los datos en la nube." },
+        { q: "¿Qué sistemas se usan para garantizar la seguridad en el proceso de compra de las aplicaciones móviles?", options: ["Cambios en el aplicativo.", "Canales seguros de comunicación.", "Software específico.", "HSTS."], ans: 1, justification: "Los procesos transaccionales utilizan canales seguros de comunicación (como TLS/SSL) para proteger el pago." },
+        { q: "¿Qué significa CASB?", options: ["Cloud Access Security Brokers.", "Cloud Advanced Security Brokers.", "Cloud Advance Security Broker.", "Created Advanced Security Bureau."], ans: 0, justification: "Significa Cloud Access Security Broker (Agente de Seguridad de Acceso a la Nube)." },
+        { q: "Los desarrolladores deben de firmar sus aplicaciones. ¿Verdadero o falso?", options: ["Verdadero", "Falso"], ans: 0, justification: "Verdadero. Tanto en iOS como en Android, la firma digital del código es un requisito de seguridad indispensable." },
+        { q: "Las apps subidas a las tiendas oficiales deben de cumplir bastantes requisitos. ¿Verdadero o falso?", options: ["Verdadero", "Falso"], ans: 0, justification: "Verdadero. Apple App Store y Google Play Store aplican controles estrictos y revisiones de seguridad antes de publicar." },
+
+        // TEMA 5
+        { q: "El control de versiones permite corregir cambios de manera sencilla. ¿Verdadero o falso?", options: ["Verdadero", "Falso"], ans: 0, justification: "Verdadero. Permite revertir a versiones anteriores (rollbacks) y comparar cambios de manera rápida." },
+        { q: "Git es un ejemplo de sistema de control de versiones. ¿Verdadero o falso?", options: ["Verdadero", "Falso"], ans: 0, justification: "Verdadero. Es el Sistema de Control de Versiones (VCS) distribuido más popular." },
+        { q: "Kubernetes es un sistema de orquestación de contenedores. ¿Verdadero o falso?", options: ["Verdadero", "Falso"], ans: 0, justification: "Verdadero. K8s orquesta, escala y automatiza el despliegue de contenedores (como Docker)." },
+        { q: "Los equipos de desarrollo almacenan su software en local. ¿Verdadero o falso?", options: ["Verdadero", "Falso"], ans: 1, justification: "Falso. Los equipos ágiles trabajan de forma colaborativa sobre repositorios compartidos en la red (ej. GitHub, GitLab)." },
+        { q: "Docker es la única alternativa si queremos trabajar con Contenedores. ¿Verdadero o falso?", options: ["Verdadero", "Falso"], ans: 1, justification: "Falso. Aunque Docker es el estándar de facto, existen otras alternativas y tecnologías de contenedores (como Podman o containerd)." },
+        { q: "DevOps es un nuevo tipo de software que está revolucionando el desarrollo. ¿Verdadero o falso?", options: ["Verdadero", "Falso"], ans: 1, justification: "Falso. DevOps no es un 'software' o una herramienta, es una cultura, movimiento o metodología de trabajo." },
+        { q: "Un contenedor es igual que una máquina virtual. ¿Verdadero o falso?", options: ["Verdadero", "Falso"], ans: 1, justification: "Falso. Las máquinas virtuales emulan hardware completo e incluyen un SO invitado. Los contenedores comparten el SO del host y son más ligeros." },
+        { q: "Los desarrollos actuales se basan en metodologías:", options: ["Conectadas.", "Estandarizadas.", "Ágiles.", "Síncronas."], ans: 2, justification: "Metodologías ágiles (como Scrum) son la base del desarrollo moderno y el paradigma DevOps." },
+        { q: "El control de versiones proporciona:", options: ["Roles.", "Todas las anteriores.", "Gestión del cambio.", "Control de permisos."], ans: 1, justification: "Proporciona gestión del cambio (historial), control de permisos y roles para trabajar colaborativamente." },
+        { q: "Docker es una tecnología de contenedores. ¿Verdadero o falso?", options: ["Verdadero", "Falso"], ans: 0, justification: "Verdadero. Es la plataforma más conocida para crear, desplegar y gestionar contenedores." },
+        
+        // TEMA 5 - Modelo 2 y 3
+        { q: "¿Cuáles son los estados de Git?", options: ["Modificado, Preparado y Confirmado.", "Contenido y desempaquetado.", "Parcheado y corregido.", "Modificado, Preparado y Solucionado."], ans: 0, justification: "Los 3 estados principales de un archivo en Git son: Modificado (Modified), Preparado (Staged) y Confirmado (Committed)." },
+        { q: "¿Docker es el estándar de desarrollo de contenedores?", options: ["Sí, desde hace poco tiempo.", "Sí.", "Es una de las tecnologías de contenedores más usadas.", "Depende del sistema operativo."], ans: 2, justification: "Es la tecnología de contenedores más extendida y usada, aunque estrictamente hablando el estándar abierto lo marca la OCI." },
+        { q: "¿Qué se pretende mejorar con DevOps?", options: ["Tipo de software a desarrollar.", "El tamaño del código.", "Tiempos de desarrollo.", "Adaptarnos mejor al cambio, alinear expectativas y mejorar la calidad."], ans: 3, justification: "El objetivo de DevOps es unir operaciones y desarrollo para mejorar la calidad, alinearse con el negocio y adaptarse ágilmente." },
+        { q: "Git y Github son y equivalen a lo mismo. ¿Verdadero o falso?", options: ["Verdadero", "Falso"], ans: 1, justification: "Falso. Git es el software de control de versiones. GitHub es una plataforma web comercial que aloja repositorios basados en Git." },
+        { q: "DevOps no es más que una metodología. ¿Verdadero o falso?", options: ["Verdadero", "Falso"], ans: 0, justification: "Verdadero. Es un cambio cultural y metodológico, no un producto que se compra e instala." },
+        { q: "Ejemplo de entorno controlado:", options: ["Kubernetes.", "Kuber.", "DevOps.", "Contenedor."], ans: 3, justification: "Un contenedor funciona precisamente como un entorno empaquetado, aislado y controlado para ejecutar una aplicación." },
+        { q: "¿Que soluciones nos ayudan con la escalabilidad de contenedores?", options: ["Tecnología de orquestación de contenedores.", "Sistemas de distribución.", "Metodologías ágiles.", "Sistemas monolíticos."], ans: 0, justification: "Sistemas como Kubernetes o Docker Swarm orquestan contenedores ayudando a escalar servicios automáticamente según la demanda." },
+        { q: "Un repositorio es la imagen visible de:", options: ["Estándares ISO de desarrollo seguro.", "El desarrollo en Docker.", "Integración continua.", "El desarrollo con Kubernetes."], ans: 2, justification: "El repositorio centralizado donde se automatizan pruebas y compilaciones es la base fundamental de la Integración Continua (CI)." },
+        { q: "GitHub es una plataforma que aloja Gits de los usuarios. ¿Verdadero o falso?", options: ["Verdadero", "Falso"], ans: 0, justification: "Verdadero. Es un servicio de alojamiento en la nube para repositorios Git." },
+        { q: "¿Qué es un VCS?", options: ["Buena práctica de desarrollo.", "Herramienta usada por el responsable de desarrollo.", "Sistema de control de versiones.", "Metodología que se usa en el desarrollo."], ans: 2, justification: "VCS significa Version Control System (Sistema de Control de Versiones), como Git o SVN." },
+        { q: "¿Qué factor ha cambiado la manera desarrollar en los últimos años?", options: ["Transformación tecnológica.", "Número de vulnerabilidades.", "Machine learning.", "Trabajo colaborativo y entrega continua."], ans: 3, justification: "La clave del cambio en el ciclo de vida del software ha sido la adopción del trabajo colaborativo (DevOps) y el pipeline de CI/CD (Entrega Continua)." },
+        { q: "¿La integración continua mejora...?", options: ["Tiempo de compilación.", "Tiempo de ejecución.", "Productividad.", "Tiempos de los ciclos."], ans: 2, justification: "Al automatizar pruebas y fusiones de código, se evitan errores tardíos y se incrementa notablemente la productividad del equipo." },
+        { q: "¿Cómo se llaman los periodos cortos de desarrollo en Scrum?", options: ["Strings.", "Sprints.", "Streams.", "Ciclos de strings."], ans: 1, justification: "En la metodología ágil Scrum, los ciclos iterativos y cortos de desarrollo se denominan Sprints (generalmente de 2 a 4 semanas)." },
+        { q: "¿Qué problemas tenemos cuando usamos muchos contenedores distintos?", options: ["Tamaño de los contenedores.", "Usuarios permitidos.", "Software incluido.", "Control y escalabilidad."], ans: 3, justification: "Gestionar manualmente cientos de contenedores es imposible. El principal problema es el control y la escalabilidad, por eso nace Kubernetes." },
+        { q: "DevOps aporta su propio software para garantizar que trabajemos de forma colaborativa. ¿Verdadero o falso?", options: ["Verdadero", "Falso"], ans: 1, justification: "Falso. DevOps utiliza herramientas de terceros (Git, Jenkins, Docker), pero no es un 'software propietario' que se instale." },
+        { q: "DevOps se basa en la colaboración. ¿Verdadero o falso?", options: ["Verdadero", "Falso"], ans: 0, justification: "Verdadero. La base de DevOps es derribar el muro entre el equipo de Desarrollo (Dev) y el de Operaciones (Ops) para colaborar juntos." }
+    ];
+
+    let currentQueue = [];
+    let failedQueue = [];
+    let currentQuestionIndex = 0;
+    let score = 0;
+    let hasAnswered = false;
+    
+    // Variables temporizador
+    let startTime;
+    let timerInterval;
+
+    // Elementos DOM
+    const questionTextEl = document.getElementById('question-text');
+    const optionsContainer = document.getElementById('options-container');
+    const progressEl = document.getElementById('progress-indicator');
+    const feedbackBox = document.getElementById('feedback-container');
+    const feedbackText = document.getElementById('feedback-text');
+    const feedbackTitle = document.getElementById('feedback-title');
+    const nextBtn = document.getElementById('next-btn');
+    const quizScreen = document.getElementById('quiz-screen');
+    const resultsScreen = document.getElementById('results-screen');
+    const timerDisplay = document.getElementById('timer-display');
+    const finalGradeEl = document.getElementById('final-grade');
+
+    function startTimer() {
+        startTime = Date.now();
+        timerInterval = setInterval(() => {
+            let diff = Date.now() - startTime;
+            let m = Math.floor(diff / 60000);
+            let s = Math.floor((diff % 60000) / 1000);
+            timerDisplay.innerText = (m < 10 ? '0'+m : m) + ':' + (s < 10 ? '0'+s : s);
+        }, 1000);
+    }
+
+    function stopTimer() {
+        clearInterval(timerInterval);
+    }
+
+    // INICIAR TEST ALEATORIO (Hasta 30 Preguntas)
+    function initFullExam() {
+        let sliceLimit = fullDb.length > 30 ? 30 : fullDb.length;
+        currentQueue = [...fullDb].sort(() => Math.random() - 0.5).slice(0, sliceLimit);
+        failedQueue = [];
+        startRonda();
+    }
+
+    // INICIAR TEST SOLO CON FALLOS
+    function initFailedQuiz() {
+        currentQueue = [...failedQueue].sort(() => Math.random() - 0.5);
+        failedQueue = []; 
+        startRonda();
+    }
+
+    function startRonda() {
+        currentQuestionIndex = 0;
+        score = 0;
+        quizScreen.style.display = 'block';
+        resultsScreen.style.display = 'none';
+        
+        clearInterval(timerInterval);
+        timerDisplay.innerText = "00:00";
+        startTimer();
+        
+        loadQuestion();
+    }
+
+    function loadQuestion() {
+        hasAnswered = false;
+        feedbackBox.style.display = 'none';
+        nextBtn.style.display = 'none';
+        optionsContainer.innerHTML = '';
+        
+        const qData = currentQueue[currentQuestionIndex];
+        progressEl.innerText = `Pregunta ${currentQuestionIndex + 1}/${currentQueue.length}`;
+        questionTextEl.innerText = qData.q;
+
+        // Cargar botones
+        qData.options.forEach((opt, index) => {
+            const btn = document.createElement('button');
+            btn.className = 'option-btn';
+            btn.innerText = opt;
+            btn.onclick = () => selectOption(index, btn);
+            optionsContainer.appendChild(btn);
+        });
+    }
+
+    function selectOption(selectedIndex, buttonClicked) {
+        if (hasAnswered) return;
+        hasAnswered = true;
+
+        const qData = currentQueue[currentQuestionIndex];
+        const buttons = optionsContainer.children;
+
+        // Deshabilitar
+        for (let btn of buttons) {
+            btn.disabled = true;
+        }
+
+        // Evaluar
+        if (selectedIndex === qData.ans) {
+            buttonClicked.classList.add('correct');
+            score++;
+            feedbackTitle.innerText = "¡Correcto! - Justificación:";
+            feedbackTitle.style.color = "var(--success)";
+        } else {
+            buttonClicked.classList.add('wrong');
+            buttons[qData.ans].classList.add('correct');
+            feedbackTitle.innerText = "Incorrecto - Justificación:";
+            feedbackTitle.style.color = "var(--error)";
+            
+            // Se va a la cola de fallos
+            failedQueue.push(qData);
+        }
+
+        feedbackText.innerText = qData.justification;
+        feedbackBox.style.display = 'block';
+        
+        if (currentQuestionIndex < currentQueue.length - 1) {
+            nextBtn.innerText = "Siguiente Pregunta ➔";
+        } else {
+            nextBtn.innerText = "Ver Calificación ➔";
+        }
+        nextBtn.style.display = 'inline-block';
+    }
+
+    function nextQuestion() {
+        currentQuestionIndex++;
+        if (currentQuestionIndex < currentQueue.length) {
+            loadQuestion();
+        } else {
+            showResults();
+        }
+    }
+
+    function showResults() {
+        stopTimer();
+        quizScreen.style.display = 'none';
+        resultsScreen.style.display = 'block';
+        
+        // Resultados numéricos
+        document.getElementById('final-score').innerText = `${score}/${currentQueue.length}`;
+        document.getElementById('final-time').innerText = timerDisplay.innerText;
+        
+        // Nota final sobre 10
+        let grade = (score / currentQueue.length) * 10;
+        finalGradeEl.innerText = grade.toFixed(2);
+        
+        // Estilos de la nota
+        finalGradeEl.className = "stat-value";
+        if(grade >= 8.5) finalGradeEl.classList.add('grade-high');
+        else if(grade >= 5.0) finalGradeEl.classList.add('grade-mid');
+        else finalGradeEl.classList.add('grade-low');
+
+        // Textos y botones
+        const resTitle = document.getElementById('results-title');
+        const resMessage = document.getElementById('results-message');
+        const btnRetryFailed = document.getElementById('btn-retry-failed');
+
+        if (failedQueue.length > 0) {
+            btnRetryFailed.style.display = 'inline-block';
+            resTitle.innerText = "¡Sigue repasando!";
+            resMessage.innerText = `Has obtenido un ${grade.toFixed(2)} sobre 10. Tienes ${failedQueue.length} pregunta(s) por afianzar.`;
+        } else {
+            btnRetryFailed.style.display = 'none';
+            resTitle.innerText = "¡Aprobado con honores!";
+            resMessage.innerText = "¡Has clavado el test! Estás dominando la puesta en producción segura.";
+        }
+    }
+
+    // Auto-arranque de la app
+    window.onload = initFullExam;
+</script>
+
+</body>
+</html>

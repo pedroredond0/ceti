@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador Bastionado de Redes y Sistemas</title>
+    <style>
+        :root {
+            --primary: #1b5e20; /* Verde oscuro para Bastionado */
+            --primary-hover: #124016;
+            --secondary: #546e7a;
+            --secondary-hover: #37474f;
+            --bg-color: #f1f8e9;
+            --card-bg: #ffffff;
+            --text-main: #263238;
+            --text-muted: #78909c;
+            --success: #2e7d32;
+            --error: #c62828;
+            --accent: #f57f17;
+            --border-radius: 12px;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .app-container {
+            background-color: var(--card-bg);
+            max-width: 850px;
+            width: 100%;
+            border-radius: var(--border-radius);
+            box-shadow: 0 10px 40px rgba(27, 94, 32, 0.15);
+            padding: 40px;
+            box-sizing: border-box;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #e8f5e9;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+
+        h1 { margin: 0; font-size: 1.6rem; color: var(--primary); }
+        
+        .header-stats {
+            display: flex;
+            gap: 20px;
+            font-weight: 600;
+            color: var(--text-muted);
+            align-items: center;
+        }
+
+        .timer {
+            background-color: #e8f5e9;
+            padding: 6px 12px;
+            border-radius: 6px;
+            color: var(--primary);
+            font-family: monospace;
+            font-size: 1.1rem;
+        }
+
+        .question-text {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+            line-height: 1.5;
+        }
+        
+        .question-hint {
+            font-size: 0.95rem;
+            color: var(--accent);
+            font-weight: bold;
+            margin-bottom: 25px;
+        }
+
+        .options-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .option-btn {
+            background-color: var(--bg-color);
+            border: 2px solid transparent;
+            padding: 16px 20px;
+            border-radius: 8px;
+            font-size: 1rem;
+            text-align: left;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: var(--text-main);
+            font-family: inherit;
+            position: relative;
+            padding-left: 45px;
+        }
+        
+        .option-btn::before {
+            content: '';
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 18px;
+            height: 18px;
+            border: 2px solid #b0bec5;
+            background-color: white;
+            transition: all 0.2s ease;
+        }
+
+        .single-choice .option-btn::before { border-radius: 50%; }
+        .multi-choice .option-btn::before { border-radius: 4px; }
+
+        .option-btn:hover:not(:disabled) {
+            border-color: #b0bec5;
+        }
+
+        .option-btn.selected:not(:disabled) {
+            border-color: var(--primary);
+            background-color: #e8f5e9;
+        }
+        
+        .option-btn.selected:not(:disabled)::before {
+            background-color: var(--primary);
+            border-color: var(--primary);
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white' width='14px' height='14px'%3E%3Cpath d='M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z'/%3E%3C/svg%3E");
+            background-position: center;
+            background-repeat: no-repeat;
+        }
+
+        .option-btn:disabled { cursor: not-allowed; }
+        
+        .option-btn.correct { background-color: #e8f5e9 !important; border-color: var(--success) !important; color: #1b5e20 !important; }
+        .option-btn.correct::before { background-color: var(--success); border-color: var(--success); background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white' width='14px' height='14px'%3E%3Cpath d='M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z'/%3E%3C/svg%3E"); }
+        
+        .option-btn.wrong { background-color: #ffebee !important; border-color: var(--error) !important; color: #b71c1c !important; }
+        .option-btn.wrong::before { background-color: var(--error); border-color: var(--error); background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white' width='14px' height='14px'%3E%3Cpath d='M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z'/%3E%3C/svg%3E"); }
+
+        .feedback-box {
+            margin-top: 25px;
+            padding: 20px;
+            border-radius: 8px;
+            background-color: #f1f8e9;
+            display: none;
+            line-height: 1.5;
+            border-left: 5px solid var(--primary);
+        }
+
+        .feedback-box h3 { margin-top: 0; font-size: 1.1rem; }
+
+        .controls {
+            margin-top: 30px;
+            display: flex;
+            justify-content: flex-end;
+            gap: 15px;
+        }
+
+        .btn {
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            font-size: 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.2s, transform 0.1s;
+        }
+        .btn:active:not(:disabled) { transform: scale(0.98); }
+        .btn:disabled { background-color: #b0bec5; cursor: not-allowed; opacity: 0.7; }
+
+        .primary-btn { background-color: var(--primary); }
+        .primary-btn:hover:not(:disabled) { background-color: var(--primary-hover); }
+        .accent-btn { background-color: var(--accent); }
+        .accent-btn:hover:not(:disabled) { background-color: #e65100; }
+        .eval-btn { background-color: #fbc531; color: #263238; }
+        .eval-btn:hover:not(:disabled) { background-color: #e1b12c; }
+
+        #results-screen { display: none; text-align: center; }
+        
+        .grade-container {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            margin: 30px 0;
+            flex-wrap: wrap;
+        }
+
+        .stat-box {
+            background-color: var(--bg-color);
+            padding: 20px 30px;
+            border-radius: 12px;
+            min-width: 150px;
+        }
+
+        .stat-value {
+            font-size: 3rem;
+            font-weight: bold;
+            color: var(--primary);
+            margin-bottom: 5px;
+        }
+        
+        .stat-value.grade-high { color: var(--success); }
+        .stat-value.grade-mid { color: #f57f17; }
+        .stat-value.grade-low { color: var(--error); }
+
+        .stat-label { font-size: 1rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
+
+        #results-actions {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 30px;
+            flex-wrap: wrap;
+        }
+    </style>
+</head>
+<body>
+
+<div class="app-container" id="app">
+    <div id="quiz-screen">
+        <div class="header">
+            <h1>Simulador Bastionado</h1>
+            <div class="header-stats">
+                <span id="progress-indicator">Pregunta 1/30</span>
+                <span class="timer" id="timer-display">00:00</span>
+            </div>
+        </div>
+        
+        <div class="question-text" id="question-text">Cargando...</div>
+        <div class="question-hint" id="question-hint"></div>
+        
+        <div class="options-list single-choice" id="options-container"></div>
+
+        <div class="feedback-box" id="feedback-container">
+            <h3 id="feedback-title">Solución</h3>
+            <div id="feedback-text"></div>
+        </div>
+
+        <div class="controls">
+            <button class="btn eval-btn" id="eval-btn" onclick="evaluateAnswer()" style="display:none;" disabled>Comprobar Respuesta</button>
+            <button class="btn primary-btn" id="next-btn" style="display: none;" onclick="nextQuestion()">Siguiente Pregunta ➔</button>
+        </div>
+    </div>
+
+    <div id="results-screen">
+        <h1 id="results-title">¡Examen Finalizado!</h1>
+        <p style="margin-top: 10px; color: var(--text-muted); font-size: 1.1rem;" id="results-message">Aquí tienes el resumen de tu rendimiento.</p>
+        
+        <div class="grade-container">
+            <div class="stat-box">
+                <div class="stat-value" id="final-grade">0.0</div>
+                <div class="stat-label">Nota (sobre 10)</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value" id="final-score" style="color: var(--text-main);">0/30</div>
+                <div class="stat-label">Aciertos</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value" id="final-time" style="color: var(--text-main);">00:00</div>
+                <div class="stat-label">Tiempo empleado</div>
+            </div>
+        </div>
+        
+        <div id="results-actions">
+            <button class="btn accent-btn" id="btn-retry-failed" style="display: none;" onclick="initFailedQuiz()">↻ Repetir Falladas</button>
+            <button class="btn primary-btn" onclick="initFullExam()">📝 Nuevo Examen Aleatorio</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // BASE DE DATOS BASTIONADO (Temas 5 al 9) - 100 Preguntas
+    const fullDb = [
+        // BASTIONADO TEMA 05 MODELO 1
+        { q: "La descarga masiva de documentos y la asignación de permisos sobre nuevas carpetas es una función típa de:", options: ["Los servidores de firma.", "Ninguna respuesta es correcta.", "Los DLP.", "Los IRM."], ans: [3], justification: "Respuesta correcta: Los IRM." },
+        { q: "Una de los ventajas de los IDS/IPS es la facilidad de parametrizar el servicio para evitar falsos positivos y falsos negativos ¿Verdadero o falso?", options: ["Verdadero", "Falso"], ans: [1], justification: "Respuesta correcta: Falso. Parametrizar los falsos positivos/negativos en IDS/IPS suele ser una tarea muy compleja." },
+        { q: "El problema principal de las redes inalámbricas es:", options: ["Que el medio utilizado es accesible para todo el mundo.", "Que tienen contraseñas por defecto.", "Ninguna de las anteriores.", "Que no disponen de cifrados robustos."], ans: [0], justification: "Respuesta correcta: Que el medio utilizado es accesible para todo el mundo." },
+        { q: "El protocolo WEP aunque es vulnerable a ciertos ataques si se configura adecuadamente será seguro su uso ¿Verdadero o falso?", options: ["Verdadero", "Falso"], ans: [1], justification: "Respuesta correcta: Falso. El protocolo WEP está obsoleto y es altamente vulnerable independientemente de su configuración." },
+        { q: "La apertura de todos los puertos y ejecución de scripts es una funcionalidad de los HIDS ¿Verdadero o falso?", options: ["Verdadero", "Falso"], ans: [1], justification: "Respuesta correcta: Falso. Los HIDS monitorizan y protegen, no abren todos los puertos." },
+        { q: "Los tipos de enlace en la implementación de una VPN son:", options: ["Cliente/Cliente y Red/Red", "Cliente/Red y Red/Red", "Cliente/Red y Red/Cliente", "Cliente/Red y Infraestructura/Red"], ans: [1], justification: "Respuesta correcta: Cliente/Red y Red/Red." },
+        { q: "En la actualidad, las redes wifi no tienen ninguna vulnerabilidad y se pueden considerar como redes robustas para cualquier propósito ¿Verdadero o falso?", options: ["Verdadero", "Falso"], ans: [1], justification: "Respuesta correcta: Falso. Las redes wifi siempre presentan ciertos riesgos y vulnerabilidades." },
+        { q: "Entre los retos más importantes a los que se enfrentan los IDS/IPS se encuentra la lucha contra las técnicas de evasión ¿Verdadero o falso?", options: ["Verdadero", "Falso"], ans: [0], justification: "Respuesta correcta: Verdadero." },
+        { q: "Un IDS de red tiene las mismas funciones que un IDS de Host ¿Verdadero o falso?", options: ["Verdadero", "Falso"], ans: [1], justification: "Respuesta correcta: Falso. El IDS de red (NIDS) analiza tráfico de red, el de host (HIDS) analiza eventos internos del sistema operativo." },
+        { q: "El cifrado WEP se creó para equipararse con la seguridad que tienen las redes cableadas ¿Verdadero o falso?", options: ["Verdadero", "Falso"], ans: [0], justification: "Respuesta correcta: Verdadero. Su nombre Wired Equivalent Privacy (Privacidad Equivalente a Cableado) indica precisamente ese objetivo inicial." },
+
+        // BASTIONADO TEMA 05 MODELO 2
+        { q: "La información cuando se transmite a través de una VPN va sin encapsular. ¿Verdadero o falso?", options: ["Verdadero", "Falso"], ans: [1], justification: "Respuesta correcta: Falso. Las VPN utilizan la encapsulación (tunneling) para proteger los datos." },
+        { q: "En la implementación de VPN, un enlace red-red une dos organizaciones ¿Verdadero o falso?", options: ["Verdadero", "Falso"], ans: [0], justification: "Respuesta correcta: Verdadero." },
+        { q: "No existen tecnologías diferentes para los sistemas de detección o prevención de intrusiones ¿Verdadero o falso?", options: ["Verdadero", "Falso"], ans: [1], justification: "Respuesta correcta: Falso. Existen diversas tecnologías (basadas en firmas, anomalías, NIDS, HIDS, etc.)." },
+        { q: "La técnica de encapsular un protocolo de red sobre otro, creando un túnel dentro de una red se denomina:", options: ["Tunneling.", "Encapsulin.", "Hidding.", "Piepin."], ans: [0], justification: "Respuesta correcta: Tunneling." },
+        { q: "Una descarga masiva de documentos podría evitarse con:", options: ["WPS.", "DLP.", "Wireless bastion.", "Ninguna de las anteriores."], ans: [1], justification: "Respuesta correcta: DLP (Data Loss Prevention)." },
+        { q: "Los tipos de infraestructuras wifi son:", options: ["BSS y ESSID.", "BDS y ESS.", "BBS y ESS.", "BSS y ESS."], ans: [3], justification: "Respuesta correcta: BSS (Basic Service Set) y ESS (Extended Service Set)." },
+        { q: "La funcionalidad WPS fue creada para garantizar la seguridad de los router wifi ¿Verdadero o falso?", options: ["Verdadero", "Falso"], ans: [1], justification: "Respuesta correcta: Falso. WPS fue creado para facilitar la conexión, pero introdujo vulnerabilidades graves." },
+        { q: "El bloqueo de ataque y ejecución de scripts es una funcionalidad de los:", options: ["HIDS", "Honey Token", "Lock & Shield", "Ninguna respuesta es correcta."], ans: [0], justification: "Respuesta correcta: HIDS." },
+        { q: "Algunos ataques específicos de las redes wifi son:", options: ["Deautenticación de usuarios y denegación de servicio.", "Denegación de servicio exclusivamente.", "Solo deautenticación de usuarios.", "Ninguna de las anteriores."], ans: [0], justification: "Respuesta correcta: Deautenticación de usuarios y denegación de servicio." },
+        { q: "La técnica de tunneling consiste en:", options: ["Ninguna de las anteriores.", "Cifrar protocolos ICMP.", "Asegurar comunicaciones UDP.", "Encapsular un protocolo de red sobre otro."], ans: [3], justification: "Respuesta correcta: Encapsular un protocolo de red sobre otro." },
+
+        // BASTIONADO TEMA 06 MODELO 1
+        { q: "La defensa en profundidad se basa en:", options: ["Establecer niveles o capas en la arquitectura, donde pasar de una capa a otra esté controlado por mecanismos de protección como firewalls", "Colocar los servidores en la planta más baja del edificio", "Ocultar todas las contraseñas en ficheros con nombres comunes."], ans: [0], justification: "Respuesta correcta: Establecer niveles o capas en la arquitectura." },
+        { q: "¿Los switches no necesitan configuración segura porque sólo trabajan en capa 2? ¿Verdadero o falso?", options: ["Verdadero", "Falso"], ans: [1], justification: "Respuesta correcta: Falso. Los switches son críticos y deben ser bastonados independientemente de su capa." },
+        { q: "¿Cuál es una metodología de desarrollo seguro?", options: ["TLS", "OSSTM", "Kali", "OWASP"], ans: [3], justification: "Respuesta correcta: OWASP." },
+        { q: "¿Por qué es útil conocer los métodos de evasión de las medidas de protección de un firewall?", options: ["Para ser nombrado hacker del mes", "Ninguna de las demás respuestas es correcta.", "Para saber si soy vulnerable a ellas con las configuraciones de seguridad aplicadas.", "Para colocar el firewall en una capa más interna."], ans: [2], justification: "Respuesta correcta: Para saber si soy vulnerable a ellas." },
+        { q: "Una medida de bastionado de un switch es:", options: ["Apagar los puertos no utilizados o asignarlos a una VLAN de 'puertos sin uso'.", "Activar todos los protocolos de capa 2", "Dejar todo el tráfico por la VLAN 1"], ans: [0], justification: "Respuesta correcta: Apagar los puertos no utilizados o asignarlos a una VLAN muerta." },
+        { q: "Segmentar el tráfico de operación de administración a través de VLAN es una buena medida de seguridad. ¿Verdadero o falso?", options: ["Verdadero", "Falso"], ans: [0], justification: "Respuesta correcta: Verdadero. Aísla el tráfico de gestión del tráfico de usuarios." },
+        { q: "Existen proveedores de servicios de firewall en la nube. ¿Verdadero o falso?", options: ["Verdadero", "Falso"], ans: [0], justification: "Respuesta correcta: Verdadero. (FWaaS - Firewall as a Service)." },
+        { q: "Permitir el acceso al sistema desde cualquier dispositivo móvil se denomina:", options: ["COPE", "BYOD", "COBE"], ans: [1], justification: "Respuesta correcta: BYOD (Bring Your Own Device)." },
+        { q: "Si dispongo de 2 firewall para construir mi DMZ dentro del sistema. Indica la afirmación cierta:", options: ["Deben ser de distinto fabricante", "Deben ser los más baratos posibles", "Deben ser los más rápidos del mercado"], ans: [0], justification: "Respuesta correcta: Deben ser de distinto fabricante (para evitar que una misma vulnerabilidad comprometa ambos)." },
+        { q: "Las reglas que se definan en un firewall se hacen en base a:", options: ["Los datos de las IP de origen de los paquetes", "Los datos de las IP de origen, IP de destino, protocolo y puerto de destino de los paquetes", "Los datos de las IP de origen o IP de destino de los paquetes"], ans: [1], justification: "Respuesta correcta: IP origen, destino, protocolo y puertos." },
+
+        // BASTIONADO TEMA 06 MODELO 2
+        { q: "¿Qué protocolo debe ser analizado con especial cuidado en las conexiones de los firewall porque es utilizado para la exfiltración de información?", options: ["Ninguna de las demás respuestas es correcta.", "Kerberos", "SNMP", "DNS"], ans: [3], justification: "Respuesta correcta: DNS. (Frecuentemente utilizado en DNS Tunneling)." },
+        { q: "¿Qué medida de seguridad podemos implementar contra el ataques de fuerza bruta en los servicios web?", options: ["Política de contraseña de 5 caracteres con obligación de una mayúscula", "No permitir el registro de nombres de usuarios comunes", "CAPTCHA", "Ninguna de las demás respuestas es correcta."], ans: [2], justification: "Respuesta correcta: CAPTCHA." },
+        { q: "Los firewall de primera generación no analizan la capa de:", options: ["Aplicación", "Transporte", "Red"], ans: [0], justification: "Respuesta correcta: Aplicación. Operan principalmente en capa de red y transporte." },
+        { q: "Uno de los ataques contra la segmentación en VLANs es:", options: ["VLAN hacking", "CDP spoofing", "VLAN hoping"], ans: [2], justification: "Respuesta correcta: VLAN hoping (VLAN Hopping)." },
+        { q: "Los firewall para servicios Web (WAF) ¿Qué capa OSI analizan para poder proteger la red de los ataques Web?", options: ["Capa 1 física", "Capa 2 enlace", "Capa 7 aplicación"], ans: [2], justification: "Respuesta correcta: Capa 7 (Aplicación)." },
+        { q: "Los NGFW aglutinan capacidades de otros dispositivos de protección como por ejemplo:", options: ["{", "Todas son correctas", "WAF", "IDS", "Antivirus"], ans: [1], justification: "Respuesta correcta: Todas son correctas." },
+        { q: "La regla final de un firewall debe ser:", options: ["Forget-all", "Deny-any", "Any-any"], ans: [1], justification: "Respuesta correcta: Deny-any (o Implicit Deny)." },
+        { q: "¿Cuáles son los puertos conocidos asociados a un servicios?", options: ["Ninguna de las demás respuestas es correcta.", "0-10", "50000-60000", "0-1024"], ans: [3], justification: "Respuesta correcta: Del 0 al 1024 (Well-known ports)." },
+        { q: "La creación de VLANs desde el punto de vista de la seguridad permite:", options: ["No necesitar administrar algunas partes de la red porque son más seguras.", "No tener que instalar firewalls en el sistema", "Controlar los flujos de información"], ans: [2], justification: "Respuesta correcta: Controlar los flujos de información y segmentar el tráfico." },
+        { q: "¿Cuál es una de la limitaciones de los firewall de segunda generación?", options: ["Son incapaces de discriminar tráfico de todos los protocolos.", "No analizan la información de los protocolos cifrados.", "Se apagan cada 24 horas.", "Sólo funcionan para redes domésticas"], ans: [1], justification: "Respuesta correcta: No analizan la información de los protocolos cifrados." },
+
+        // BASTIONADO TEMA 07 MODELO 1
+        { q: "La capacidad de detección de nuevas amenazas por parte del SIEM se basa únicamente en la actualización del software. ¿Verdadero o falso?", options: ["Verdadero", "Falso"], ans: [1], justification: "Respuesta correcta: Falso. Depende de las reglas de correlación, la inteligencia de amenazas (CTI) y el análisis de logs." },
+        { q: "El SIEM es una herramienta de seguridad:", options: ["Reactiva", "Nula", "Proactiva"], ans: [0], justification: "Respuesta correcta: Reactiva (alerta cuando detecta el patrón)." },
+        { q: "Qué protección aplica las mejoras prácticas de seguridad de SPF y DKIM:", options: ["OSPF", "DMARC", "NTLM"], ans: [1], justification: "Respuesta correcta: DMARC." },
+        { q: "¿Por qué un correo electrónico con un fichero adjunto cifrado supone una amenaza?", options: ["Porque no es necesario mandar ficheros cifrados, ya lo hacen los mecanismos del correo.", "El contenido no puede ser analizado por los mecanismos de protección del correo.", "Porque el fichero va a intentar ser descifrado por el servidor y se puede colapsar el servicio."], ans: [1], justification: "Respuesta correcta: El contenido no puede ser analizado por los mecanismos de protección del correo (antivirus, antispam)." },
+        { q: "Reducir el tiempo de inoperatividad de un firewall es responsabilidad del:", options: ["NOC", "SOC", "Seguridad física"], ans: [0], justification: "Respuesta correcta: NOC (Network Operations Center)." },
+        { q: "¿Cuál de las siguientes tareas no es responsabilidad del SOC?", options: ["Investigación de alertas de seguridad", "Configuración del firewall", "Mejorar las reglas de detección"], ans: [1], justification: "Respuesta correcta: Configuración del firewall (suele ser del NOC o del equipo de infraestructura)." },
+        { q: "Los procedimientos operativos del SOC que ayudan actuar en cada tipo de incidente de seguridad se denominan:", options: ["HideBooks", "Playbooks", "Whitebook"], ans: [1], justification: "Respuesta correcta: Playbooks." },
+        { q: "¿Qué información puede integrarse en un proxy para mejorar su efectividad?", options: ["Canales RSS", "Datos de IOCs", "Virus"], ans: [1], justification: "Respuesta correcta: Datos de IOCs (Indicadores de Compromiso)." },
+        { q: "¿Cuál es uno de los principales vectores de entrada en el sistema y objetivo de los atacantes?", options: ["Infraestructura en la nube (IaaS)", "Equipos de los usuarios", "SIEM"], ans: [1], justification: "Respuesta correcta: Equipos de los usuarios (endpoints)." },
+        { q: "Las herramientas antiAPT no necesitan actualizarse. ¿Verdadero o falso?", options: ["Verdadero", "Falso"], ans: [1], justification: "Respuesta correcta: Falso. Todas las herramientas de seguridad requieren actualizaciones constantes." },
+
+        // BASTIONADO TEMA 07 MODELO 2
+        { q: "Qué fase del almacenamiento de los logs es el más crítico para poder posteriormente realizar búsqueda de manera rápida y eficiente:", options: ["Indexado", "Parseo", "Reenvío"], ans: [0], justification: "Respuesta correcta: Indexado." },
+        { q: "Las herramientas de almacenamiento de logs tiene que dimensionarse en base a:", options: ["Todas son correctas", "Tiempo de retención", "Tamaño y formato de los logs", "Cantidad de fuentes"], ans: [0], justification: "Respuesta correcta: Todas son correctas." },
+        { q: "De las siguietes alternativas, qué parte de un SOC es necesario tener en cuenta para que esté bien dimensionado:", options: ["La planta en la que esté situado", "El número de recursos humanos que dispone", "La ciudad donde se aloje"], ans: [1], justification: "Respuesta correcta: El número de recursos humanos que dispone." },
+        { q: "Los logs de los diferentes dispostivos de una red tienen diferentes formatos, cantidad de información y número de campos ¿Verdadero o falso?", options: ["Verdadero", "Falso"], ans: [0], justification: "Respuesta correcta: Verdadero. De ahí la necesidad de normalizar o parsear." },
+        { q: "¿Qué información puede ser de utilidad a la hora de diseñar reglas de filtrado en el servidio de correo electrónico?", options: ["Cabeceras", "El idioma en el que está escrito", "Firma del correo"], ans: [0], justification: "Respuesta correcta: Cabeceras." },
+        { q: "¿Qué mecanismo complementario necesitan los atacanes para infectar los equipos de los usuarios?", options: ["Los medios de comunicación", "El Blockchain", "Ingeniería social"], ans: [2], justification: "Respuesta correcta: Ingeniería social (Phishing, etc)." },
+        { q: "¿El personal de un NOC tiene que tener visibilidad de las alertas del SIEM? ¿Verdadero o falso?", options: ["Verdadero", "Falso"], ans: [1], justification: "Respuesta correcta: Falso. Las alertas de seguridad (SIEM) son competencia del SOC." },
+        { q: "El protocolo SNMP permite obtener información de un dispositivo de la red. ¿Qué versión del protocolo es considerada segura?", options: ["v1", "v3", "v2"], ans: [1], justification: "Respuesta correcta: v3 (incorpora autenticación fuerte y cifrado)." },
+        { q: "Qué ataque de denegación de servicios, DoS, se aprvecha del protocolo TCP de inicio de conexión de 3 vías (handshake).", options: ["Ping de la muerte", "Syn Flooding", "IP Spoofing"], ans: [1], justification: "Respuesta correcta: Syn Flooding." },
+        { q: "Ante un incidente que deriva en un resultado de falso positivo no es necesario hacer nada sobre el SIEM o el dispositivo que la genera. ¿Verdadero o falso?", options: ["Verdadero", "Falso"], ans: [1], justification: "Respuesta correcta: Falso. Hay que ajustar las reglas y afinar (tunning) el sistema para evitar ruido." },
+
+        // BASTIONADO TEMA 08 MODELO 1
+        { q: "¿Por qué es necesario establecer la secuencia de arranque de un equipo?", options: ["Para evitar que se cargue en el sistema un SO no controlado", "Para que el usuario pueda elegirlo", "Para que sea más rápido"], ans: [0], justification: "Respuesta correcta: Para evitar que se cargue en el sistema un SO no controlado." },
+        { q: "¿Es considerada segura la UEFI de un fabricante que no publica actualizaciones de seguridad de su firmware? ¿Verdadero o falso?", options: ["Verdadero", "Falso"], ans: [1], justification: "Respuesta correcta: Falso. El firmware debe recibir actualizaciones periódicas de seguridad." },
+        { q: "Por defecto y atendiéndonos a los principios de seguridad el CDROM debería estar activado en la BIOS. ¿Verdadero o falso?", options: ["Verdadero", "Falso"], ans: [1], justification: "Respuesta correcta: Falso. Solo se deben activar los medios necesarios para la operación." },
+        { q: "¿Cómo se denomina el arranque de equipos o instalación del sistema operativo a través de la red?", options: ["PXE", "XXE", "TTY"], ans: [0], justification: "Respuesta correcta: PXE (Preboot eXecution Environment)." },
+        { q: "El Bluetooth activado contituye un riesgo para la fuga de información del sistema. ¿Verdadero o falso?", options: ["Verdadero", "Falso"], ans: [0], justification: "Respuesta correcta: Verdadero. Supone un vector de exposición innecesario si no se usa." },
+        { q: "Se considera seguro dejar habilitados todos los puertos de comunicación del sistema a través de la BIOS. ¿Verdadero o falso?", options: ["Verdadero", "Falso"], ans: [1], justification: "Respuesta correcta: Falso. Deben deshabilitarse los no utilizados (principio de mínimo privilegio)." },
+        { q: "¿Qué mecanismo de seguridad permite proteger el acceso la BIOS?", options: ["Actualizarla", "Cambiar la secuencia de arranque", "Contraseña"], ans: [2], justification: "Respuesta correcta: Contraseña." },
+        { q: "Que tipo de malware se instala en el arranque del sistema:", options: ["spoofing", "rootkit", "adware"], ans: [1], justification: "Respuesta correcta: rootkit / bootkit." },
+        { q: "¿Qué debemos monitorizar en el arranque del sistema?", options: ["Consumo de disco", "Jerarquía de procesos", "Número de usuarios"], ans: [1], justification: "Respuesta correcta: Jerarquía de procesos (para detectar anomalías y ejecuciones no autorizadas)." },
+        { q: "La comprobación de integridad de la nuevar versión de la BIOS nos asegura:", options: ["Que no tiene vulnerabilidades", "Autenticidad del software por parte del fabricante", "La correcta funcionalidad"], ans: [1], justification: "Respuesta correcta: Autenticidad del software por parte del fabricante (evita actualizaciones manipuladas)." },
+
+        // BASTIONADO TEMA 08 MODELO 2
+        { q: "La información de la compañia tiene más seguridad si se almacena en:", options: ["En USBs externos", "Servidores de ficheros", "En el disco duro de cada usuario"], ans: [1], justification: "Respuesta correcta: Servidores de ficheros (centralización, control de accesos y respaldos)." },
+        { q: "¿Qué medida de seguridad aplicarías a la BIOS?", options: ["Comprar una pila de mayor duración", "Activar todos los puertos", "Comprobar la integridad del firmware"], ans: [2], justification: "Respuesta correcta: Comprobar la integridad del firmware." },
+        { q: "Por qué se ha tenido en consideración la utilización de productos ciberseguros acreditados", options: ["Ataques a la cadena de suministros", "Por el continuo negocio de las blockchain", "El alto coste que tienen los productos de software libre"], ans: [0], justification: "Respuesta correcta: Ataques a la cadena de suministros (Supply Chain Attacks)." },
+        { q: "¿Cuál de los siguiente no es un riesgo de tener los USB activados?", options: ["Aumenta la concienciación de los usuarios", "Eleva el riesgo de fuga de información y de infección", "Permite conectar dispositivos 'rogue' para captura de información, lineas de conexión no controladas, despliegue de malware,..."], ans: [0], justification: "Respuesta correcta: Aumenta la concienciación de los usuarios (eso no es un riesgo)." },
+        { q: "¿Cómo se denomina el modo de arranque del sistema que nos permite realizar un diagnóstico de un problema?", options: ["Arranque TOR", "Arranque antihacking", "Arranque seguro"], ans: [2], justification: "Respuesta correcta: Arranque seguro (Safe Mode)." },
+        { q: "La descarga de la actualización firware de BIOS/UEFI se debe hacer desde:", options: ["Página oficial del fabricante.", "Página web del Ministerio de Industria.", "La página que aglutina más software relativo a BIOS/UEFI."], ans: [0], justification: "Respuesta correcta: Página oficial del fabricante." },
+        { q: "Qué tecnología nos proporciona el acceso más segura al sistema de manera remota sin que la información tenga que almacenarse en el dispositivo desde el que nos conectamos.", options: ["RDP", "Telnet", "VDI/VGI"], ans: [2], justification: "Respuesta correcta: VDI/VGI (Virtual Desktop Infrastructure)." },
+        { q: "¿Qué medida de seguridad elevaría la protección de un equipo durante el arranque del sistema?", options: ["Establecer una contraseña", "Establecer un horario de funcionamiento", "Tener un delay de 5 minutos"], ans: [0], justification: "Respuesta correcta: Establecer una contraseña (en BIOS/UEFI o disco)." },
+        { q: "Qué herramienta de Windows permite el cifrado de la información del sistema de archivos:", options: ["AppLocker", "BitLocker", "CipherWin"], ans: [1], justification: "Respuesta correcta: BitLocker." },
+        { q: "Realizar el diseño del sistema en base a un catálogo de productos que cumplen una acreditación de seguridad no beneficia al sistema. ¿Verdadero o falso?", options: ["Verdadero", "Falso"], ans: [1], justification: "Respuesta correcta: Falso. Sí beneficia, asegura estándares mínimos de calidad y mitigación de fallos." },
+
+        // BASTIONADO TEMA 09 MODELO 1
+        { q: "El término que denomina los sistemas obsoletos y sin posibilidad de actualización pero que es necesario mantener en el sistema se denominan:", options: ["Legacy", "Antiguos", "Old systems"], ans: [0], justification: "Respuesta correcta: Legacy (Sistemas heredados)." },
+        { q: "Para qué puede ser utilizado el cliente de telnet como herramienta de testeo", options: ["DoS", "Fingerprint", "Bruteforce"], ans: [1], justification: "Respuesta correcta: Fingerprint (Banner grabbing para obtener info de los puertos)." },
+        { q: "¿Por qué otro servicios seguro se puede sustituir telnet?", options: ["SSH", "SNMP", "FTP"], ans: [0], justification: "Respuesta correcta: SSH (Cifra las conexiones, al contrario que telnet)." },
+        { q: "¿Qué herramienta de la siguiente es un HIDS?", options: ["Putty", "nmap", "Wazuh"], ans: [2], justification: "Respuesta correcta: Wazuh." },
+        { q: "¿Cuántos canales establece el protocolo FTP?", options: ["4", "2", "1"], ans: [1], justification: "Respuesta correcta: 2 (Canal de comandos y canal de datos)." },
+        { q: "¿Fue NAT concebido como un mecanismo de seguridad? ¿Verdadero o falso?", options: ["Verdadero", "Falso"], ans: [1], justification: "Respuesta correcta: Falso. NAT se creó para solucionar el agotamiento de direcciones IPv4, aunque secundariamente oculte la red." },
+        { q: "¿Qué herramienta de sysinternal nos permite monitorizar los procesos?", options: ["Whois", "Procmon", "NTFSInfo"], ans: [1], justification: "Respuesta correcta: Procmon (Process Monitor)." },
+        { q: "Las tarjetas de red pueden utilizar el protocolo IPv6, si no lo vamos a utilizar, ¿es conveniente dejarlo habilitado? ¿Verdadero o falso?", options: ["Verdadero", "Falso"], ans: [1], justification: "Respuesta correcta: Falso. Lo que no se usa, debe deshabilitarse." },
+        { q: "Qué dos modos de funcionamiento tiene el sistema FTP", options: ["TCP/UDP", "Activo/Pasivo", "Prueba/Error"], ans: [1], justification: "Respuesta correcta: Activo/Pasivo." },
+        { q: "¿Qué herramienta del entorno Linux se utiliza para el control de la ejecución de software?", options: ["OSSEC", "AppArmour", "AppLocker"], ans: [1], justification: "Respuesta correcta: AppArmor. (AppLocker es de Windows)." },
+
+        // BASTIONADO TEMA 09 MODELO 2
+        { q: "Los sistemas MDM me ayudarán a controlar la seguridad de:", options: ["Firewall", "Proxy", "Dispositivos móviles"], ans: [2], justification: "Respuesta correcta: Dispositivos móviles (Mobile Device Management)." },
+        { q: "¿Cómo se denomina la estrategia de reducir los servicios de un sistema a los mínimos necesarios?", options: ["Reducción de la superficie de exposición", "Medida compensatoria", "Privilegios mínimos"], ans: [0], justification: "Respuesta correcta: Reducción de la superficie de exposición (Attack Surface Reduction)." },
+        { q: "Qué dispositivo nos ayudará a recoger información de la red para enviarlo a un IDS", options: ["Router", "IPS", "Tap"], ans: [2], justification: "Respuesta correcta: Tap (Network Tap) o un puerto SPAN/Mirror." },
+        { q: "¿Cuál es el protocolo utilizado por TFTP?", options: ["UDP", "ICMP", "TCP"], ans: [0], justification: "Respuesta correcta: UDP (Trivial FTP funciona sin conexión para mayor rapidez y sencillez)." },
+        { q: "¿Cómo se denominan las medidas complementarias que se aplican al no poder aplicar algunas medidas de bastionado?", options: ["Medidas no seguras", "Medidas no confiables", "Medidas compensatorias"], ans: [2], justification: "Respuesta correcta: Medidas compensatorias." },
+        { q: "En una red con direccionamiento estático, ¿qué protocolo deberíamos eliminar?", options: ["SMB", "ARP", "DHCP"], ans: [2], justification: "Respuesta correcta: DHCP. Si la red es puramente estática, el servicio de asignación dinámica sobra." },
+        { q: "Cuál de los siguientes no es un método de protección contra la autenticación", options: ["Certificados digitales", "MFA", "Usuarios genéricos de administración"], ans: [2], justification: "Respuesta correcta: Usuarios genéricos de administración (esto de hecho es una mala práctica)." },
+        { q: "Identifica el mecanismo de Windows que impide la ejecución de código fuera de las direcciones reservadas.", options: ["DEP", "IOCs", "Nomemory"], ans: [0], justification: "Respuesta correcta: DEP (Data Execution Prevention)." },
+        { q: "¿Con un antivirus estamos a salvo de cualquier ataque? ¿Verdadero o falso?", options: ["Verdadero", "Falso"], ans: [1], justification: "Respuesta correcta: Falso. Es solo una capa más dentro del enfoque de defensa en profundidad." },
+        { q: "No existe una versión más segura del protocolo FTP. ¿Verdadero o falso?", options: ["Verdadero", "Falso"], ans: [1], justification: "Respuesta correcta: Falso. Existen versiones seguras como SFTP y FTPS." }
+    ];
+
+    let currentQueue = [];
+    let failedQueue = [];
+    let currentQuestionIndex = 0;
+    let score = 0;
+    let currentSelection = [];
+    
+    // Temporizador
+    let startTime;
+    let timerInterval;
+
+    // Elementos DOM
+    const questionTextEl = document.getElementById('question-text');
+    const questionHintEl = document.getElementById('question-hint');
+    const optionsContainer = document.getElementById('options-container');
+    const progressEl = document.getElementById('progress-indicator');
+    const feedbackBox = document.getElementById('feedback-container');
+    const feedbackText = document.getElementById('feedback-text');
+    const feedbackTitle = document.getElementById('feedback-title');
+    const evalBtn = document.getElementById('eval-btn');
+    const nextBtn = document.getElementById('next-btn');
+    const quizScreen = document.getElementById('quiz-screen');
+    const resultsScreen = document.getElementById('results-screen');
+    const timerDisplay = document.getElementById('timer-display');
+    const finalGradeEl = document.getElementById('final-grade');
+
+    function startTimer() {
+        startTime = Date.now();
+        timerInterval = setInterval(() => {
+            let diff = Date.now() - startTime;
+            let m = Math.floor(diff / 60000);
+            let s = Math.floor((diff % 60000) / 1000);
+            timerDisplay.innerText = (m < 10 ? '0'+m : m) + ':' + (s < 10 ? '0'+s : s);
+        }, 1000);
+    }
+
+    function stopTimer() {
+        clearInterval(timerInterval);
+    }
+
+    function initFullExam() {
+        let sliceLimit = fullDb.length > 30 ? 30 : fullDb.length;
+        currentQueue = [...fullDb].sort(() => Math.random() - 0.5).slice(0, sliceLimit);
+        failedQueue = [];
+        startRonda();
+    }
+
+    function initFailedQuiz() {
+        currentQueue = [...failedQueue].sort(() => Math.random() - 0.5);
+        failedQueue = []; 
+        startRonda();
+    }
+
+    function startRonda() {
+        currentQuestionIndex = 0;
+        score = 0;
+        hasAnswered = false;
+        quizScreen.style.display = 'block';
+        resultsScreen.style.display = 'none';
+        
+        clearInterval(timerInterval);
+        timerDisplay.innerText = "00:00";
+        startTimer();
+        
+        loadQuestion();
+    }
+
+    function loadQuestion() {
+        hasAnswered = false;
+        currentSelection = [];
+        feedbackBox.style.display = 'none';
+        nextBtn.style.display = 'none';
+        optionsContainer.innerHTML = '';
+        
+        const qData = currentQueue[currentQuestionIndex];
+        const isMultiple = qData.ans.length > 1;
+        
+        progressEl.innerText = `Pregunta ${currentQuestionIndex + 1}/${currentQueue.length}`;
+        questionTextEl.innerText = qData.q;
+        
+        if (isMultiple) {
+            questionHintEl.innerText = "⚠️ Múltiple selección. Elige todas las opciones correctas y pulsa 'Comprobar Respuesta'.";
+            optionsContainer.className = "options-list multi-choice";
+            evalBtn.style.display = 'inline-block';
+            evalBtn.disabled = true;
+        } else {
+            questionHintEl.innerText = "⭐ Selecciona la única respuesta correcta.";
+            optionsContainer.className = "options-list single-choice";
+            evalBtn.style.display = 'none'; 
+        }
+
+        qData.options.forEach((opt, index) => {
+            const btn = document.createElement('button');
+            btn.className = 'option-btn';
+            btn.innerText = opt;
+            btn.onclick = () => toggleOption(index, btn, isMultiple);
+            optionsContainer.appendChild(btn);
+        });
+    }
+
+    function toggleOption(index, btnElement, isMultiple) {
+        if (hasAnswered) return;
+
+        if (!isMultiple) {
+            currentSelection = [index];
+            btnElement.classList.add('selected');
+            evaluateAnswer(); 
+        } else {
+            if (currentSelection.includes(index)) {
+                currentSelection = currentSelection.filter(i => i !== index);
+                btnElement.classList.remove('selected');
+            } else {
+                currentSelection.push(index);
+                btnElement.classList.add('selected');
+            }
+            evalBtn.disabled = currentSelection.length === 0;
+        }
+    }
+
+    function evaluateAnswer() {
+        hasAnswered = true;
+        const qData = currentQueue[currentQuestionIndex];
+        const buttons = optionsContainer.children;
+
+        for (let btn of buttons) {
+            btn.disabled = true;
+        }
+        evalBtn.style.display = 'none'; 
+
+        let sortedSelection = [...currentSelection].sort();
+        let sortedAnswers = [...qData.ans].sort();
+        
+        let isCorrect = (sortedSelection.length === sortedAnswers.length) && 
+                        sortedSelection.every((val, index) => val === sortedAnswers[index]);
+
+        if (isCorrect) {
+            score++;
+            feedbackTitle.innerText = "¡Correcto!";
+            feedbackTitle.style.color = "var(--success)";
+        } else {
+            feedbackTitle.innerText = "Incorrecto";
+            feedbackTitle.style.color = "var(--error)";
+            failedQueue.push(qData);
+        }
+        
+        for (let i = 0; i < buttons.length; i++) {
+            if (qData.ans.includes(i)) {
+                buttons[i].classList.add('correct');
+            } else if (currentSelection.includes(i)) {
+                buttons[i].classList.add('wrong');
+            }
+        }
+
+        feedbackText.innerText = qData.justification;
+        feedbackBox.style.display = 'block';
+        
+        if (currentQuestionIndex < currentQueue.length - 1) {
+            nextBtn.innerText = "Siguiente Pregunta ➔";
+        } else {
+            nextBtn.innerText = "Ver Calificación ➔";
+        }
+        nextBtn.style.display = 'inline-block';
+    }
+
+    function nextQuestion() {
+        currentQuestionIndex++;
+        if (currentQuestionIndex < currentQueue.length) {
+            loadQuestion();
+        } else {
+            showResults();
+        }
+    }
+
+    function showResults() {
+        stopTimer();
+        quizScreen.style.display = 'none';
+        resultsScreen.style.display = 'block';
+        
+        document.getElementById('final-score').innerText = `${score}/${currentQueue.length}`;
+        document.getElementById('final-time').innerText = timerDisplay.innerText;
+        
+        let grade = (score / currentQueue.length) * 10;
+        finalGradeEl.innerText = grade.toFixed(2);
+        
+        finalGradeEl.className = "stat-value";
+        if(grade >= 8.5) finalGradeEl.classList.add('grade-high');
+        else if(grade >= 5.0) finalGradeEl.classList.add('grade-mid');
+        else finalGradeEl.classList.add('grade-low');
+
+        const resTitle = document.getElementById('results-title');
+        const resMessage = document.getElementById('results-message');
+        const btnRetryFailed = document.getElementById('btn-retry-failed');
+
+        if (failedQueue.length > 0) {
+            btnRetryFailed.style.display = 'inline-block';
+            resTitle.innerText = "¡A seguir fortaleciendo el bastión!";
+            resMessage.innerText = `Has obtenido un ${grade.toFixed(2)} sobre 10. Te quedan ${failedQueue.length} pregunta(s) por afianzar.`;
+        } else {
+            btnRetryFailed.style.display = 'none';
+            resTitle.innerText = "¡Sistemas asegurados al 100%!";
+            resMessage.innerText = "¡Enhorabuena, no has fallado ni una! Tu defensa en profundidad es impenetrable.";
+        }
+    }
+
+    window.onload = initFullExam;
+</script>
+
+</body>
+</html>

@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador Global - Ciberseguridad</title>
+    <style>
+        :root {
+            --primary: #0056b3;
+            --primary-hover: #004494;
+            --secondary: #6c757d;
+            --secondary-hover: #5a6268;
+            --bg-color: #f0f2f5;
+            --card-bg: #ffffff;
+            --text-main: #2c3e50;
+            --text-muted: #7f8c8d;
+            --success: #27ae60;
+            --error: #e74c3c;
+            --accent: #e67e22;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .app-container {
+            background-color: var(--card-bg);
+            max-width: 850px;
+            width: 100%;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            padding: 40px;
+            box-sizing: border-box;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid var(--bg-color);
+            padding-bottom: 15px;
+            margin-bottom: 30px;
+        }
+
+        h1 { margin: 0; font-size: 1.6rem; color: var(--primary); }
+        
+        .header-stats {
+            display: flex;
+            gap: 20px;
+            font-weight: 600;
+            color: var(--text-muted);
+            align-items: center;
+        }
+
+        .timer {
+            background-color: #eef2f5;
+            padding: 6px 12px;
+            border-radius: 6px;
+            color: var(--primary);
+            font-family: monospace;
+            font-size: 1.1rem;
+        }
+
+        .question-text {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 25px;
+            line-height: 1.5;
+        }
+
+        .options-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .option-btn {
+            background-color: var(--bg-color);
+            border: 2px solid transparent;
+            padding: 16px 20px;
+            border-radius: 8px;
+            font-size: 1rem;
+            text-align: left;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: var(--text-main);
+            font-family: inherit;
+        }
+
+        .option-btn:hover:not(:disabled) {
+            border-color: var(--primary);
+            background-color: #e9f0f7;
+        }
+
+        .option-btn:disabled { cursor: not-allowed; }
+        
+        .option-btn.correct { background-color: #e8f8f5; border-color: var(--success); color: #1e8449; }
+        .option-btn.wrong { background-color: #fdedec; border-color: var(--error); color: #c0392b; }
+
+        .feedback-box {
+            margin-top: 25px;
+            padding: 20px;
+            border-radius: 8px;
+            background-color: #f8f9fa;
+            display: none;
+            line-height: 1.5;
+            border-left: 5px solid var(--primary);
+        }
+
+        .feedback-box h3 { margin-top: 0; font-size: 1.1rem; }
+
+        .controls {
+            margin-top: 30px;
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .btn {
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            font-size: 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.2s, transform 0.1s;
+        }
+        .btn:active { transform: scale(0.98); }
+
+        .primary-btn { background-color: var(--primary); }
+        .primary-btn:hover { background-color: var(--primary-hover); }
+        .secondary-btn { background-color: var(--secondary); }
+        .secondary-btn:hover { background-color: var(--secondary-hover); }
+        .accent-btn { background-color: var(--accent); }
+        .accent-btn:hover { background-color: #d35400; }
+
+        #results-screen { display: none; text-align: center; }
+        
+        .grade-container {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            margin: 30px 0;
+            flex-wrap: wrap;
+        }
+
+        .stat-box {
+            background-color: var(--bg-color);
+            padding: 20px 30px;
+            border-radius: 12px;
+            min-width: 150px;
+        }
+
+        .stat-value {
+            font-size: 3rem;
+            font-weight: bold;
+            color: var(--primary);
+            margin-bottom: 5px;
+        }
+        
+        .stat-value.grade-high { color: var(--success); }
+        .stat-value.grade-mid { color: var(--accent); }
+        .stat-value.grade-low { color: var(--error); }
+
+        .stat-label { font-size: 1rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
+
+        #results-actions {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 30px;
+            flex-wrap: wrap;
+        }
+    </style>
+</head>
+<body>
+
+<div class="app-container" id="app">
+    <!-- Pantalla de Preguntas -->
+    <div id="quiz-screen">
+        <div class="header">
+            <h1>Simulador IC - Global</h1>
+            <div class="header-stats">
+                <span id="progress-indicator">Pregunta 1/30</span>
+                <span class="timer" id="timer-display">00:00</span>
+            </div>
+        </div>
+        
+        <div class="question-text" id="question-text">Cargando...</div>
+        <div class="options-list" id="options-container"></div>
+
+        <div class="feedback-box" id="feedback-container">
+            <h3 id="feedback-title">Justificación</h3>
+            <div id="feedback-text"></div>
+        </div>
+
+        <div class="controls">
+            <button class="btn primary-btn" id="next-btn" style="display: none;" onclick="nextQuestion()">Siguiente Pregunta ➔</button>
+        </div>
+    </div>
+
+    <!-- Pantalla de Resultados -->
+    <div id="results-screen">
+        <h1 id="results-title">¡Examen Finalizado!</h1>
+        <p style="margin-top: 10px; color: var(--text-muted); font-size: 1.1rem;" id="results-message">Aquí tienes el resumen de tu rendimiento.</p>
+        
+        <div class="grade-container">
+            <div class="stat-box">
+                <div class="stat-value" id="final-grade">0.0</div>
+                <div class="stat-label">Nota (sobre 10)</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value" id="final-score" style="color: var(--text-main);">0/30</div>
+                <div class="stat-label">Aciertos</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value" id="final-time" style="color: var(--text-main);">00:00</div>
+                <div class="stat-label">Tiempo empleado</div>
+            </div>
+        </div>
+        
+        <div id="results-actions">
+            <button class="btn accent-btn" id="btn-retry-failed" style="display: none;" onclick="initFailedQuiz()">↻ Repetir Falladas</button>
+            <button class="btn primary-btn" onclick="initFullExam()">📝 Nuevo Examen de 30 Preguntas</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // BASE DE DATOS GLOBAL (105 Preguntas)
+    const dbUnidad4 = [
+        { q: "¿A qué metodología pertenece la Creación de Políticas de Lecciones Aprendidas?", options: ["ITIL.", "Agile.", "PMI.", "Lean Manufacturing.", "Seis Sigma."], ans: 3, justification: "La creación de políticas de Lecciones Aprendidas no es una opción... Esta recomendación Lean ha probado ya su eficiencia sobradamente." },
+        { q: "¿Qué organismo edita la publicación 'Plan de Contingencia y Continuidad de Negocio'?", options: ["El INCIBE.", "El CCN.", "El CSIRT.", "El CNI."], ans: 0, justification: "Pertenece a la colección 'Protege tu empresa' editada por INCIBE." },
+        { q: "¿Qué compañía desarrolla y mantiene la distro de hacking ético Kali Linux?", options: ["Offensive Security.", "Norton.", "Kaspersky Lab.", "McAfee.", "Elastic Enterprise."], ans: 0, justification: "La iniciativa más popular en este sentido a nivel global es la de Offensive Security." },
+        { q: "¿Cuál de los siguientes detalles no resulta relevante durante la reflexión tras un incidente de seguridad?", options: ["El análisis de las causas del problema.", "Qué problemas han estado asociados a la gestión del incidente.", "Cómo se ha desarrollado la actividad durante la manifestación del incidente.", "Los Planes Productivos para la siguiente etapa."], ans: 3, justification: "Los planes productivos no se mencionan en esta fase de reflexión (causas, desarrollo y problemas sí)." },
+        { q: "La clave de las Lecciones Aprendidas es:", options: ["La documentación del incidente.", "La Ciber-Resiliencia de la organización.", "La calidad de las evidencias recopiladas.", "La precisión del análisis del incidente."], ans: 0, justification: "Las lecciones aprendidas se basan en la documentación del incidente." },
+        { q: "¿Cuáles son las principales ventajas de disponer de un SOC?", options: ["El almacenamiento de datos relevantes en relación con los incidentes.", "La centralización de la actividad de ciberseguridad de la empresa.", "Todas las anteriores.", "El análisis de los datos con posterioridad a una incidencia."], ans: 2, justification: "En un SOC la actividad está centralizada, abarcando detección, almacenamiento de datos y su análisis posterior." },
+        { q: "La identificación de la Causa Raíz suele suponer:", options: ["El 50% del trabajo de análisis.", "El 80% del trabajo de análisis.", "El 75% del trabajo de análisis.", "El 10% del trabajo de análisis."], ans: 1, justification: "Suele constituir el 80% del trabajo posterior de análisis del incidente." },
+        { q: "¿Cuál de las siguientes cuestiones deberá estar recogida en la estrategia de ciberseguridad de una empresa?", options: ["La Integración Continua del software.", "La definición y caracterización de los Niveles de Operación.", "Los umbrales de Seis Sigma.", "Las cuestiones de Lean Manufacturing."], ans: 1, justification: "La definición y caracterización de los niveles de operación deberá estar recogida en la estrategia." },
+        { q: "¿Qué se deberá detallar durante el proceso de Documentación de un Ciberincidente?", options: ["El coste del incidente.", "Todas las anteriores.", "La causa del incidente.", "Las medidas a tomar para prevenir futuros incidentes similares."], ans: 1, justification: "Se debe detallar causa, coste y medidas preventivas." },
+        { q: "¿Cuál es la orientación principal de la política de combate de los incidentes en la actualidad?", options: ["De análisis forense y lecciones aprendidas.", "Proactiva y Preventiva.", "Reactiva."], ans: 1, justification: "Quedan pocas dudas de que la política de combate deba ser proactiva y preventiva." },
+        { q: "Según el INCIBE, ¿cuándo se considera que se ha alcanzado un nivel de ciberresiliencia 'Repetible'?", options: ["Cuando se han establecido requisitos de ciberresiliencia, pero no se han documentado.", "Cuando se gestionan, actualizan y verifican los requisitos de ciberresiliencia.", "Cuando se aplican acciones de mejora en la definición de requisitos."], ans: 0, justification: "El nivel L2 (Repetible) se define como: Se han establecido requisitos de ciberresiliencia, pero no se han documentado." },
+        { q: "¿Cuál de estas medidas de mitigación está ligada a la Filosofía Lean?", options: ["Determinar las causas y los síntomas del ciberincidente.", "Recuperar la última copia de seguridad limpia.", "Identificar y eliminar todo el software utilizado por los atacantes."], ans: 2, justification: "Eliminar el software de los atacantes está ligado a la Filosofía Lean (pulcritud y orden)." },
+        { q: "La distribución Linux más popular en el área del Hacking Ético es:", options: ["Ninguna de las anteriores.", "Red Hat.", "SUSE.", "Fedora."], ans: 0, justification: "Es Kali Linux (que no está entre las opciones 'Red Hat, SUSE, Fedora')." },
+        { q: "¿En caso de ausencia de procedimientos de actuación, qué suele ocurrir en los momentos iniciales de afectación por un incidente?", options: ["Se cortan súbitamente las comunicaciones.", "Se levantan inmediatamente los escudos antimalware.", "Por lo general hay un cierto desconcierto en lo relativo a las medidas que se deben tomar."], ans: 2, justification: "Suele existir desconcierto sobre qué medidas tomar, quién y en qué orden." },
+        { q: "Estadísticamente hablando, ¿cuáles son los ataques más frecuentes?", options: ["Los que se efectúan a través de servicios legítimos.", "Los que se efectúan utilizando brechas de los sistemas.", "Los que instalan un troyano silencioso."], ans: 0, justification: "Son más frecuentes los ataques a través de servicios legítimos no suficientemente protegidos que por brechas." },
+        { q: "La Ciberresiliencia es:", options: ["La capacidad para resistir, proteger y defender el uso del ciberespacio frente a los atacantes.", "La resistencia a los incidentes recursivos.", "La resistencia frente a la repetición de incidentes conocidos.", "La resistencia informática extrema."], ans: 0, justification: "Definición literal del manual: La capacidad para resistir, proteger y defender el uso del ciberespacio frente a los atacantes." },
+        { q: "¿A qué se debe normalmente la reproducción a corto plazo de un incidente ya identificado y contenido?", options: ["Todas las anteriores.", "A no dotar Planes de Respuesta de Emergencia.", "A no tomar todas las precauciones necesarias.", "A no mantener las cuarentenas requeridas."], ans: 0, justification: "Se debe a la falta de precauciones, falta de cuarentenas y falta de planes de respuesta por las prisas." },
+        { q: "¿Qué resulta clave durante la fase de recuperación tras un incidente?", options: ["No precipitarse en la puesta en producción de sistemas que se hayan visto implicados.", "Que las áreas afectadas puedan retomar su actividad cuanto antes.", "Devolver el nivel de operación a su estado normal."], ans: 0, justification: "Es importante no precipitarse en la puesta en producción de sistemas implicados para evitar la reproducción del ataque." },
+        { q: "Tras un incidente de ciberseguridad, la cuarentena es:", options: ["El período de tiempo establecido con medidas adicionales de monitorización.", "La vigilancia específica de 40 días.", "Las pruebas de penetración durante 40 días.", "La espera de 40 días antes de reactivar."], ans: 0, justification: "Se define como un periodo de tiempo con medidas adicionales de monitorización." },
+        { q: "¿Qué es fundamental a la hora de diseñar un flujo de toma de decisión y escalado de incidentes?", options: ["La Excelencia Operativa.", "La Metodología PMI.", "La adhesión a las comunidades del ámbito de la ciberseguridad.", "La Metodología Agile."], ans: 2, justification: "Es fundamental la adhesión a las comunidades de ciberseguridad para tomar referencias preventivas." },
+        { q: "¿Cuál de las siguientes cuestiones no es un criterio para la toma de decisión en relación con la contención de un incidente?", options: ["Daño potencial a la organización.", "Premisas para preservar evidencias.", "Tiempo de espera online.", "Hurto de activos y detalle de su valor."], ans: 2, justification: "El 'Tiempo de espera online' no aparece en la lista de criterios de la estrategia de contención." },
+        { q: "Ante la proliferación masiva de incidentes de Ciberseguridad, se deben efectuar:", options: ["Todas las anteriores.", "Labores preventivas.", "Labores operativas en caso de incidente.", "Labores de registro y documentación."], ans: 0, justification: "Se deben efectuar labores preventivas, operativas y de registro y documentación de lecciones aprendidas." },
+        { q: "La mayoría de las empresas están poco preparadas para enfrentarse a los ciberataques, debido a:", options: ["Poca preparación para detener los ataques.", "Falta de formación o recursos.", "Todas las anteriores.", "Falta de medidas técnicas.", "Falta de pruebas para evaluar la capacidad real."], ans: 2, justification: "Falta de medidas, poca preparación, falta de formación y falta de pruebas." },
+        { q: "¿A qué se debe principalmente la repetición de ataques anteriores?", options: ["A no aplicar medidas preventivas.", "A no documentar adecuadamente la causa y el coste del incidente.", "A no actualizar las medidas antimalware."], ans: 1, justification: "El problema se refuerza si no se calcula el coste y no se documenta adecuadamente la causa." },
+        { q: "¿Cuáles son las Medidas de Ciberseguridad que se deben implantar para prevenir y combatir los incidentes?", options: ["Procedimientos, capacidades, flujos de decisión y mecanismos de restablecimiento.", "Bastionado, alerta temprana y cuestiones preventivas.", "Instalación de IDS, IPS, SIEM y NAS cifrado."], ans: 0, justification: "Las medidas estarán compuestas por procedimientos, capacidades, flujos de toma de decisión y mecanismos de restablecimiento." },
+        // Duplicadas en el set original de 40 de la U4 eliminadas visualmente aquí para mantener la lógica estricta, pero usaré las 25 únicas de la U4. 
+        // (Las 15 restantes del documento de U4 eran repeticiones entre los exámenes).
+    ];
+
+    const dbUnidad5 = [
+        { q: "El CSIRT puede considerar Cerrado un incidente si:", options: ["Si es un Falso Positivo.", "Permanece sin Resolución y con respuesta.", "Todos los anteriores.", "Está resuelto y sin respuesta."], ans: 2, justification: "Puede cerrarse como Resuelto, Sin Resolución o como un Falso positivo." },
+        { q: "¿Qué Nivel de Peligrosidad tiene el 'Fraude'?", options: ["Medio.", "Crítico.", "Muy Alto.", "Bajo.", "Alto."], ans: 0, justification: "El fraude se categoriza dentro del nivel 2 de peligrosidad (Medio)." },
+        { q: "Para la notificación de los incidentes de ciberseguridad se utiliza como referencia:", options: ["El Nivel de Peligrosidad.", "Los datos de los sistemas de alerta.", "El Nivel de Impacto.", "La Taxonomía de Referencia."], ans: 0, justification: "Se utiliza como criterio de referencia el Nivel de Peligrosidad asignado al incidente." },
+        { q: "¿Qué Nivel de Peligrosidad tiene el 'Uso No Autorizado de Recursos'?", options: ["Alto.", "Bajo.", "Crítico.", "Medio.", "Muy Alto."], ans: 3, justification: "El uso no autorizado de recursos es una de las tipologías asociadas al nivel Medio." },
+        { q: "¿Qué Nivel de Peligrosidad tienen las 'Amenazas Persistentes Avanzadas'?", options: ["Medio.", "Crítico.", "Muy Alto.", "Alto.", "Bajo."], ans: 1, justification: "Las APT constituyen el nivel máximo de peligrosidad (nivel 5 - Crítico)." },
+        { q: "Si un incidente afecta a una infraestructura crítica, se debe notificar a:", options: ["CNPIC.", "INCIBE-CERT.", "CCN-CERT.", "ESP-DEF-CERT."], ans: 0, justification: "Se debe poner en conocimiento del CNPIC por la Ley PIC 8/2011." },
+        { q: "¿Qué Nivel de Peligrosidad tiene el 'Scanning o Sniffing'?", options: ["Muy Alto.", "Crítico.", "Alto.", "Bajo.", "Medio."], ans: 3, justification: "El escaneo o sniffing se clasifica como nivel 1 de peligrosidad (Bajo)." },
+        { q: "¿Qué Nivel de Peligrosidad tiene la 'Intrusión o Intento de Intrusión'?", options: ["Alto.", "Medio.", "Muy Alto.", "Crítico.", "Bajo."], ans: 1, justification: "Pertenecen al nivel de peligrosidad Medio." },
+        { q: "¿Qué Nivel de Peligrosidad tiene la 'Distribución y Configuración de Malware'?", options: ["Bajo.", "Medio.", "Muy Alto.", "Alto.", "Crítico."], ans: 2, justification: "Catalogada dentro del nivel 4 de peligrosidad (Muy Alto)." },
+        { q: "¿Qué Nivel de Peligrosidad tiene la 'Ingeniería Social'?", options: ["Crítico.", "Alto.", "Bajo.", "Medio.", "Muy Alto."], ans: 3, justification: "Se encuentra dentro del nivel de peligrosidad Medio." },
+        { q: "¿Qué Nivel de Peligrosidad tiene el 'Phishing'?", options: ["Muy Alto.", "Crítico.", "Medio.", "Alto.", "Bajo."], ans: 3, justification: "El Phishing está en la categoría de peligrosidad nivel 3 (Alto)." },
+        { q: "¿Qué Nivel de Peligrosidad tiene la 'Denegación de Servicio Distribuida'?", options: ["Alto.", "Crítico.", "Medio.", "Muy Alto.", "Bajo."], ans: 0, justification: "Los ataques DDoS se encuentran en el nivel de peligrosidad Alto." },
+        { q: "¿Qué Nivel de Peligrosidad tiene el 'Discurso de Odio'?", options: ["Crítico.", "Bajo.", "Medio.", "Muy Alto.", "Alto."], ans: 2, justification: "El Discurso de odio está categorizado como nivel de peligrosidad 2 (Medio)." },
+        { q: "¿Qué Nivel de Peligrosidad tiene el 'Contenido Sexual o Violento'?", options: ["Crítico.", "Medio.", "Muy Alto.", "Bajo.", "Alto."], ans: 4, justification: "Se agrupa bajo el nivel de peligrosidad 3 (Alto)." },
+        { q: "Señalar cuál de los siguientes incidentes tiene un nivel de peligrosidad Crítico:", options: ["Infección por Código Dañino.", "Scanning o Sniffing.", "Amenaza Persistente Avanzada.", "Revelación de Información."], ans: 2, justification: "Solo las APT alcanzan el nivel máximo de peligrosidad (5 - Crítico)." },
+        { q: "¿Qué Nivel de Peligrosidad tiene la 'Infección por Código Dañino'?", options: ["Medio.", "Bajo.", "Alto.", "Muy Alto.", "Crítico."], ans: 2, justification: "La infección por malware se clasifica en nivel Alto." },
+        { q: "¿Qué organismo edita y mantiene la Guía Nacional de Notificación y Gestión de Ciberincidentes?:", options: ["El INCIBE.", "El Esquema Nacional de Seguridad.", "El Consejo Nacional de Ciberseguridad."], ans: 2, justification: "El Consejo Nacional de Ciberseguridad es el encargado de editarla." },
+        { q: "¿Qué contiene, entre otras cosas, el ENS?:", options: ["Los Niveles de Impacto de los incidentes.", "Nada de lo anterior.", "La relación entre Niveles de Peligrosidad e Impacto.", "Los Niveles de Peligrosidad de los incidentes."], ans: 0, justification: "El ENS es el marco utilizado para categorizar el Nivel de Impacto." },
+        { q: "¿Cuál de los siguientes elementos no tiene por qué estar contenido en un procedimiento de notificación de incidentes de una empresa?:", options: ["Las indicaciones de apertura del incidente.", "El impacto del incidente sobre el EBITDA.", "Las entidades destinatarias.", "Las ventanas temporales de reporte."], ans: 1, justification: "No se menciona el EBITDA como un campo obligatorio en este marco." },
+        { q: "¿Qué Nivel de Peligrosidad tiene el 'Spam'?", options: ["Medio.", "Muy Alto.", "Crítico.", "Bajo.", "Alto."], ans: 3, justification: "El Spam se considera un incidente de nivel 1 (Bajo)." }
+    ];
+
+    const dbUnidad6 = [
+        { q: "¿Para qué se utiliza el protocolo SSH?", options: ["Para abrir sesiones en máquinas remotas.", "Para transferir archivos.", "Para las dos funciones anteriores."], ans: 0, justification: "Se utiliza para abrir sesiones en máquinas remotas, sustituyendo a telnet." },
+        { q: "¿Que estrategia permite estar preparado ante cualquier incidente?", options: ["Los planes de acción.", "Las instalaciones gemelas.", "Las políticas de respaldos.", "Todas las anteriores."], ans: 3, justification: "Asumir la vulnerabilidad implica dotar planes de respuesta, forense, respaldos e instalaciones gemelas." },
+        { q: "¿Qué capa de la Torre ISO-OSI se compone de los servicios de comunicación estándar a disposición de cualquier usuario?", options: ["Capa Transporte.", "Capa Red.", "Capa Aplicación.", "Capa Presentación."], ans: 2, justification: "La Capa de Aplicación (Nivel 7) se compone de los servicios a disposición de los usuarios." },
+        { q: "¿En qué capa de la Torre ISO-OSI se sitúa el protocolo ICMP?", options: ["Capa Enlace de Datos.", "Capa Red.", "Capa Transporte.", "Capa Aplicación."], ans: 1, justification: "El protocolo ICMP se ubica en el Nivel 3 (Capa de Red)." },
+        { q: "¿Qué capa de la Torre ISO-OSI asegura que la información se transfiere de forma comprensible para un sistema?", options: ["Capa Presentación.", "Capa Enlace de Datos.", "Capa Transporte.", "Capa Sesión."], ans: 0, justification: "La Capa de Presentación asegura que la información sea comprensible para el sistema." },
+        { q: "¿En qué posición de una regla Snort se sitúa la 'Acción de la Regla'?", options: ["Trailer.", "No Aplica.", "Header."], ans: 2, justification: "La Acción (alert, drop) forma parte del Header." },
+        { q: "¿Con qué reglas de detección puede trabajar Snort?", options: ["Con las personalizadas.", "Con las de la comunidad.", "Siempre funciona con las de la comunidad y personalizadas a la vez."], ans: 2, justification: "Utiliza las locales personalizadas y además todas las recomendadas por la Comunidad Snort." },
+        { q: "¿En qué posición de una regla Snort se sitúan las 'Opciones'?", options: ["Header.", "No Aplica.", "Trailer."], ans: 2, justification: "Las 'Opciones' (sid, msg) se ubican dentro del Trailer." },
+        { q: "¿Cuáles de las siguientes labores se asocian con el segundo principio pragmático de la Ciberseguridad?", options: ["Instalación de software.", "Políticas de respaldo.", "La detección y análisis rápido de los incidentes de seguridad."], ans: 2, justification: "El segundo principio es 'Alertar de lo desconocido' mediante detección y análisis rápido." },
+        { q: "¿Qué capa de la Torre ISO-OSI introduce el concepto de Integridad, asegurando que los datos no se deterioran durante la transferencia?", options: ["Capa Sesión.", "Capa Enlace de Datos.", "Capa Transporte.", "Capa Red."], ans: 2, justification: "Capa de Transporte: Introduce el concepto de Integridad." },
+        { q: "¿Qué capa de la Torre ISO-OSI define el hardware de conexión?", options: ["Capa Presentación.", "Capa Red.", "Capa Enlace de Datos.", "Capa Física."], ans: 3, justification: "Capa Física: Define el HW de conexión física." },
+        { q: "¿Qué capa de la Torre ISO-OSI habilita el inicio, desarrollo y fin de una transmisión?", options: ["Capa Enlace de Datos.", "Capa Transporte.", "Capa Sesión.", "Capa Aplicación."], ans: 2, justification: "Capa de Sesión: Incorpora el concepto de sesión (inicio, desarrollo y fin)." },
+        { q: "¿En qué posición de una regla Snort se sitúa la 'Dirección IP Origen'?", options: ["Trailer.", "Header.", "No Aplica."], ans: 1, justification: "Forma parte de la cabecera (Header)." },
+        { q: "¿En qué posición de una regla Snort se sitúa el 'Puerto IP Destino'?", options: ["No Aplica.", "Header.", "Trailer."], ans: 1, justification: "Todo el matching de direcciones y puertos está en el Header." },
+        { q: "¿En qué posición de una regla Snort se sitúa el 'Puerto IP Origen'?", options: ["No Aplica.", "Trailer.", "Header."], ans: 2, justification: "Forma parte del Header." },
+        { q: "¿Cuál es la condición básica para activar Snort como un IPS?", options: ["Estar en la misma máquina que el SIEM.", "Estar conectado a una BD.", "Disponer de una máquina con al menos dos interfaces de red."], ans: 2, justification: "Se necesita una eth0 para sniffear y otra eth1 para bloquear en línea." },
+        { q: "¿Qué capa de la Torre ISO-OSI controla la transferencia de datos en la red?", options: ["Capa Transporte.", "Capa Presentación.", "Capa Enlace de Datos.", "Capa Red."], ans: 2, justification: "Capa de Enlace de Datos: Controla la transferencia mediante protocolos de bajo nivel." },
+        { q: "¿Qué capa de la Torre ISO-OSI introduce el direccionamiento y la comunicación entre diferentes redes?", options: ["Capa Transporte.", "Capa Aplicación.", "Capa Red.", "Capa Enlace de Datos."], ans: 2, justification: "Capa de Red: Introduce el direccionamiento y comunicación entre redes." },
+        { q: "¿Qué entidad técnica utiliza Snort para enviar la información de logging a una máquina remota?", options: ["Una Linux Facility.", "Un Linux Pipe.", "Un Socket."], ans: 0, justification: "Utiliza syslog con facility (ej: local6) para enviar logs remotos." },
+        { q: "¿En qué posición de una regla Snort se sitúa el 'Protocolo'?", options: ["No Aplica.", "Header.", "Trailer."], ans: 1, justification: "Al inicio del Header (ej: alert tcp)." },
+        { q: "¿Para qué sirve el protocolo ICMP?", options: ["Señalización.", "Primitivas de mantenimiento.", "Para comprobar la alcanzabilidad de una máquina."], ans: 2, justification: "Soporta el comando ping para detectar alcanzabilidad." },
+        { q: "¿Cuál es la misión de Snort en el SOC?", options: ["Almacenamiento.", "Monitorización.", "Detección y Prevención de Intrusiones.", "Filtrado."], ans: 2, justification: "Es el sistema de Detección y Prevención de intrusiones (IDS/IPS)." },
+        { q: "¿En qué posición de una regla Snort se sitúa la 'Dirección de la Operación'?", options: ["Trailer.", "No Aplica.", "Header."], ans: 2, justification: "Es el símbolo '->' y pertenece al Header." },
+        { q: "¿En qué posición de una regla Snort se sitúa el 'Mensaje'?", options: ["Header.", "Trailer.", "No Aplica."], ans: 1, justification: "El 'msg' va en el Trailer." },
+        { q: "¿Qué funcionalidad tiene Snort?", options: ["Sólo IDS.", "IDS con algunas funciones IPS.", "Es un IDS/IPS totalmente funcional."], ans: 2, justification: "Funciona tanto pasivamente como bloqueando en línea." }
+    ];
+
+    const dbUnidad7 = [
+        { q: "¿En qué módulo del SOC se utiliza el lenguaje Grok?", options: ["En Kibana.", "En Logstash.", "En Elasticsearch."], ans: 1, justification: "Grok es un plugin de filtrado de Logstash." },
+        { q: "¿Cuál es la opción del menú de Kibana que sirve para crear tableros de visualización con las métricas?", options: ["Discover.", "Dashboard.", "Visualize."], ans: 1, justification: "Dashboard agrupa múltiples visualizaciones en un tablero." },
+        { q: "¿Dónde se guarda la información del SIEM?", options: ["En los Pipelines de Logstash.", "En los logs del IDS.", "En un índice de Elasticsearch."], ans: 2, justification: "Elasticsearch actúa como el motor de almacenamiento (base de datos)." },
+        { q: "¿En qué entorno se basa Kibana?", options: ["Node.js.", "IBM WebSphere.", "Microsoft .net.", "Ninguno."], ans: 0, justification: "Kibana es una app web construida sobre Node.js." },
+        { q: "¿Cuál debe ser el orden de arranque de las aplicaciones en el SIEM ELK?", options: ["Kibana, Logstash, Elasticsearch.", "Arrancar Elasticsearch primero, el resto es indiferente.", "Logstash, Kibana, Elasticsearch."], ans: 1, justification: "Elasticsearch es la base de datos, Logstash y Kibana dependen de él para arrancar." },
+        { q: "¿Qué ocurre cuando una base de datos es NoSQL?", options: ["Sólo entiende comandos no escritos en SQL.", "Entiende cualquier lenguaje.", "Ninguna de las anteriores."], ans: 2, justification: "NoSQL significa 'Not Only SQL' (modelo no relacional tradicional)." },
+        { q: "¿En qué módulo del SOC se definen los Pipelines?", options: ["En Elasticsearch.", "En Kibana.", "En Logstash."], ans: 2, justification: "Logstash funciona a través de Pipelines (Input, Filter, Output)." },
+        { q: "¿Cómo se presenta la información de Elasticsearch a través del navegador?", options: ["En JSON.", "En XML.", "Como un POJO.", "Como un EJB."], ans: 0, justification: "Se comunica vía API RESTful devolviendo formato JSON." },
+        { q: "¿Cuál es la misión de Elasticsearch en el SOC?", options: ["Monitorización.", "Filtrado.", "Detección.", "Almacenamiento de la información."], ans: 3, justification: "Es el motor de búsqueda que se encarga del almacenamiento e indexación." },
+        { q: "¿Qué módulos de la Pila ELK precisan un ajuste de los límites de memoria RAM?", options: ["Logstash y Elasticsearch.", "Todos.", "Sólo Kibana.", "Sólo Logstash."], ans: 0, justification: "Ambos corren sobre Java (JVM) y precisan configurar el 'Heap' (jvm.options)." },
+        { q: "¿En qué consiste la etapa final del proceso en un SIEM?", options: ["Análisis para detectar patrones y prevenir incidentes.", "Presentación en tableros.", "Métricas e histogramas."], ans: 0, justification: "Culmina al generar inteligencia procesable para prevenir incidentes." },
+        { q: "¿Dónde se ajusta la RAM consumida por la Pila ELK?", options: ["En las opciones de la Máquina Virtual Java.", "En los Pipelines.", "En los logs."], ans: 0, justification: "Se configura en el archivo jvm.options de la JVM." },
+        { q: "¿Cuál es la misión de Kibana en el SOC?", options: ["Almacenamiento.", "Filtrado.", "Monitorización de la información.", "Prevención."], ans: 2, justification: "Es la interfaz (GUI) para explorar y monitorizar los datos." },
+        { q: "¿Para qué sirve el patrón Greedydata?", options: ["Para letras y mayúsculas.", "Discriminar números.", "Capturar una cadena de caracteres completa y grabarla en una variable.", "Formato hexadecimal."], ans: 2, justification: "En Logstash/Grok, GREEDYDATA (.*) captura absolutamente todo el texto restante." },
+        { q: "¿Cuál es la misión de Logstash en el SOC?", options: ["Almacenamiento.", "Filtrado de la información de los logs.", "Monitorización.", "Detección."], ans: 1, justification: "Ingiere logs, los parsea/filtra (Grok) y los envía al almacenamiento." },
+        { q: "¿Cuál es la opción del menú de Kibana que sirve para crear métricas con los Datos de un índice?", options: ["Visualize.", "Dashboard.", "Discover."], ans: 0, justification: "Visualize es el taller para construir métricas individuales." },
+        { q: "¿En qué módulo del SOC se preparan los Cuadros de Mando?", options: ["En Elasticsearch.", "En Logstash.", "En Kibana."], ans: 2, justification: "Los Dashboards se construyen visualmente dentro de Kibana." },
+        { q: "¿Qué software se debe instalar en un PC para trabajar con Kibana?", options: ["Framework .net.", "Ninguno, basta con disponer de un navegador de Internet.", "Cliente Kibana."], ans: 1, justification: "Es una app web, solo necesitas un navegador." },
+        { q: "¿En qué módulo del SOC está ubicado el Grok Debugger?", options: ["En Logstash", "En Elasticsearch.", "En Kibana."], ans: 2, justification: "La herramienta visual para probar RegEx (Grok Debugger) está en la interfaz de Kibana (Dev Tools)." },
+        { q: "¿Cuál es el Comodín en el lenguaje Grok?", options: ["Ampersand.", "Asterisco.", "El carácter 'punto'."], ans: 2, justification: "En Expresiones Regulares, el punto (.) es el comodín universal para cualquier carácter." }
+    ];
+
+    // Unir todas en una sola gran DB (90 únicas)
+    const fullDb = [...dbUnidad4, ...dbUnidad5, ...dbUnidad6, ...dbUnidad7];
+
+    let currentQueue = []; // Cola de 30 preguntas (o las falladas)
+    let failedQueue = [];
+    let currentQuestionIndex = 0;
+    let score = 0;
+    let hasAnswered = false;
+    
+    // Variables del temporizador
+    let startTime;
+    let timerInterval;
+
+    // DOM Elements
+    const questionTextEl = document.getElementById('question-text');
+    const optionsContainer = document.getElementById('options-container');
+    const progressEl = document.getElementById('progress-indicator');
+    const feedbackBox = document.getElementById('feedback-container');
+    const feedbackText = document.getElementById('feedback-text');
+    const feedbackTitle = document.getElementById('feedback-title');
+    const nextBtn = document.getElementById('next-btn');
+    const quizScreen = document.getElementById('quiz-screen');
+    const resultsScreen = document.getElementById('results-screen');
+    const timerDisplay = document.getElementById('timer-display');
+    const finalGradeEl = document.getElementById('final-grade');
+
+    function startTimer() {
+        startTime = Date.now();
+        timerInterval = setInterval(() => {
+            let diff = Date.now() - startTime;
+            let m = Math.floor(diff / 60000);
+            let s = Math.floor((diff % 60000) / 1000);
+            timerDisplay.innerText = (m < 10 ? '0'+m : m) + ':' + (s < 10 ? '0'+s : s);
+        }, 1000);
+    }
+
+    function stopTimer() {
+        clearInterval(timerInterval);
+    }
+
+    // Iniciar con EXAMEN DE 30 PREGUNTAS
+    function initFullExam() {
+        // Barajar toda la DB y coger solo 30
+        currentQueue = [...fullDb].sort(() => Math.random() - 0.5).slice(0, 30);
+        failedQueue = [];
+        startRonda();
+    }
+
+    // Iniciar con LAS FALLADAS
+    function initFailedQuiz() {
+        currentQueue = [...failedQueue].sort(() => Math.random() - 0.5);
+        failedQueue = [];
+        startRonda();
+    }
+
+    function startRonda() {
+        currentQuestionIndex = 0;
+        score = 0;
+        quizScreen.style.display = 'block';
+        resultsScreen.style.display = 'none';
+        
+        clearInterval(timerInterval);
+        timerDisplay.innerText = "00:00";
+        startTimer();
+        
+        loadQuestion();
+    }
+
+    function loadQuestion() {
+        hasAnswered = false;
+        feedbackBox.style.display = 'none';
+        nextBtn.style.display = 'none';
+        optionsContainer.innerHTML = '';
+        
+        const qData = currentQueue[currentQuestionIndex];
+        progressEl.innerText = `Pregunta ${currentQuestionIndex + 1}/${currentQueue.length}`;
+        questionTextEl.innerText = qData.q;
+
+        // Mostrar opciones de la pregunta actual
+        qData.options.forEach((opt, index) => {
+            const btn = document.createElement('button');
+            btn.className = 'option-btn';
+            btn.innerText = opt;
+            btn.onclick = () => selectOption(index, btn);
+            optionsContainer.appendChild(btn);
+        });
+    }
+
+    function selectOption(selectedIndex, buttonClicked) {
+        if (hasAnswered) return;
+        hasAnswered = true;
+
+        const qData = currentQueue[currentQuestionIndex];
+        const buttons = optionsContainer.children;
+
+        // Deshabilitar todos los botones tras responder
+        for (let btn of buttons) {
+            btn.disabled = true;
+        }
+
+        // Evaluar la respuesta
+        if (selectedIndex === qData.ans) {
+            buttonClicked.classList.add('correct');
+            score++;
+            feedbackTitle.innerText = "¡Correcto! - Justificación:";
+            feedbackTitle.style.color = "var(--success)";
+        } else {
+            buttonClicked.classList.add('wrong');
+            buttons[qData.ans].classList.add('correct');
+            feedbackTitle.innerText = "Incorrecto - Justificación:";
+            feedbackTitle.style.color = "var(--error)";
+            
+            // Si falla, se guarda para el modo repaso
+            failedQueue.push(qData);
+        }
+
+        feedbackText.innerText = qData.justification;
+        feedbackBox.style.display = 'block';
+        
+        if (currentQuestionIndex < currentQueue.length - 1) {
+            nextBtn.innerText = "Siguiente Pregunta ➔";
+        } else {
+            nextBtn.innerText = "Ver Calificación ➔";
+        }
+        nextBtn.style.display = 'inline-block';
+    }
+
+    function nextQuestion() {
+        currentQuestionIndex++;
+        if (currentQuestionIndex < currentQueue.length) {
+            loadQuestion();
+        } else {
+            showResults();
+        }
+    }
+
+    function showResults() {
+        stopTimer();
+        quizScreen.style.display = 'none';
+        resultsScreen.style.display = 'block';
+        
+        // Asignar Aciertos
+        document.getElementById('final-score').innerText = `${score}/${currentQueue.length}`;
+        
+        // Asignar Tiempo
+        document.getElementById('final-time').innerText = timerDisplay.innerText;
+        
+        // Calcular Nota sobre 10
+        let grade = (score / currentQueue.length) * 10;
+        finalGradeEl.innerText = grade.toFixed(2);
+        
+        // Colores de la nota
+        finalGradeEl.className = "stat-value";
+        if(grade >= 8.5) finalGradeEl.classList.add('grade-high');
+        else if(grade >= 5) finalGradeEl.classList.add('grade-mid');
+        else finalGradeEl.classList.add('grade-low');
+
+        const resTitle = document.getElementById('results-title');
+        const resMessage = document.getElementById('results-message');
+        const btnRetryFailed = document.getElementById('btn-retry-failed');
+
+        if (failedQueue.length > 0) {
+            btnRetryFailed.style.display = 'inline-block';
+            resTitle.innerText = "¡Sigue practicando!";
+            resMessage.innerText = `Has obtenido un ${grade.toFixed(2)} sobre 10. Tienes ${failedQueue.length} pregunta(s) por repasar.`;
+        } else {
+            btnRetryFailed.style.display = 'none';
+            resTitle.innerText = "¡Excelente, un 10 perfecto!";
+            resMessage.innerText = "¡Has clavado el examen! Estás preparadísimo para arrasar.";
+        }
+    }
+
+    // Auto-arrancar al abrir
+    window.onload = initFullExam;
+</script>
+
+</body>
+</html>

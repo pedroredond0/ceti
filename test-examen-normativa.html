@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador Normativa de Ciberseguridad (NDC)</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --primary-hover: #1a252f;
+            --secondary: #7f8c8d;
+            --secondary-hover: #6c7a89;
+            --bg-color: #f4f6f7;
+            --card-bg: #ffffff;
+            --text-main: #333333;
+            --text-muted: #7f8c8d;
+            --success: #27ae60;
+            --error: #c0392b;
+            --accent: #d35400;
+            --border-radius: 10px;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .app-container {
+            background-color: var(--card-bg);
+            max-width: 850px;
+            width: 100%;
+            border-radius: var(--border-radius);
+            box-shadow: 0 8px 30px rgba(0,0,0,0.08);
+            padding: 40px;
+            box-sizing: border-box;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #eef1f2;
+            padding-bottom: 15px;
+            margin-bottom: 30px;
+        }
+
+        h1 { margin: 0; font-size: 1.6rem; color: var(--primary); }
+        
+        .header-stats {
+            display: flex;
+            gap: 20px;
+            font-weight: 600;
+            color: var(--text-muted);
+            align-items: center;
+        }
+
+        .timer {
+            background-color: #e8ecf1;
+            padding: 6px 12px;
+            border-radius: 6px;
+            color: var(--primary);
+            font-family: monospace;
+            font-size: 1.1rem;
+        }
+
+        .question-text {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 25px;
+            line-height: 1.5;
+        }
+
+        .options-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .option-btn {
+            background-color: var(--bg-color);
+            border: 2px solid transparent;
+            padding: 16px 20px;
+            border-radius: 8px;
+            font-size: 1rem;
+            text-align: left;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: var(--text-main);
+            font-family: inherit;
+        }
+
+        .option-btn:hover:not(:disabled) {
+            border-color: var(--primary);
+            background-color: #eef1f2;
+        }
+
+        .option-btn:disabled { cursor: not-allowed; }
+        
+        .option-btn.correct { background-color: #e9f7ef; border-color: var(--success); color: #196f3d; }
+        .option-btn.wrong { background-color: #f9ebea; border-color: var(--error); color: #922b21; }
+
+        .feedback-box {
+            margin-top: 25px;
+            padding: 20px;
+            border-radius: 8px;
+            background-color: #f8f9fa;
+            display: none;
+            line-height: 1.5;
+            border-left: 5px solid var(--primary);
+        }
+
+        .feedback-box h3 { margin-top: 0; font-size: 1.1rem; }
+
+        .controls {
+            margin-top: 30px;
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .btn {
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            font-size: 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.2s, transform 0.1s;
+        }
+        .btn:active { transform: scale(0.98); }
+
+        .primary-btn { background-color: var(--primary); }
+        .primary-btn:hover { background-color: var(--primary-hover); }
+        .secondary-btn { background-color: var(--secondary); }
+        .secondary-btn:hover { background-color: var(--secondary-hover); }
+        .accent-btn { background-color: var(--accent); }
+        .accent-btn:hover { background-color: #b54600; }
+
+        #results-screen { display: none; text-align: center; }
+        
+        .grade-container {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            margin: 30px 0;
+            flex-wrap: wrap;
+        }
+
+        .stat-box {
+            background-color: var(--bg-color);
+            padding: 20px 30px;
+            border-radius: 12px;
+            min-width: 150px;
+        }
+
+        .stat-value {
+            font-size: 3rem;
+            font-weight: bold;
+            color: var(--primary);
+            margin-bottom: 5px;
+        }
+        
+        .stat-value.grade-high { color: var(--success); }
+        .stat-value.grade-mid { color: var(--accent); }
+        .stat-value.grade-low { color: var(--error); }
+
+        .stat-label { font-size: 1rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
+
+        #results-actions {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 30px;
+            flex-wrap: wrap;
+        }
+    </style>
+</head>
+<body>
+
+<div class="app-container" id="app">
+    <!-- Pantalla de Preguntas -->
+    <div id="quiz-screen">
+        <div class="header">
+            <h1>Simulador Normativa (NDC)</h1>
+            <div class="header-stats">
+                <span id="progress-indicator">Pregunta 1/30</span>
+                <span class="timer" id="timer-display">00:00</span>
+            </div>
+        </div>
+        
+        <div class="question-text" id="question-text">Cargando...</div>
+        <div class="options-list" id="options-container"></div>
+
+        <div class="feedback-box" id="feedback-container">
+            <h3 id="feedback-title">Justificación</h3>
+            <div id="feedback-text"></div>
+        </div>
+
+        <div class="controls">
+            <button class="btn primary-btn" id="next-btn" style="display: none;" onclick="nextQuestion()">Siguiente Pregunta ➔</button>
+        </div>
+    </div>
+
+    <!-- Pantalla de Resultados -->
+    <div id="results-screen">
+        <h1 id="results-title">¡Examen Finalizado!</h1>
+        <p style="margin-top: 10px; color: var(--text-muted); font-size: 1.1rem;" id="results-message">Aquí tienes el resumen de tu rendimiento.</p>
+        
+        <div class="grade-container">
+            <div class="stat-box">
+                <div class="stat-value" id="final-grade">0.0</div>
+                <div class="stat-label">Nota (sobre 10)</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value" id="final-score" style="color: var(--text-main);">0/30</div>
+                <div class="stat-label">Aciertos</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value" id="final-time" style="color: var(--text-main);">00:00</div>
+                <div class="stat-label">Tiempo empleado</div>
+            </div>
+        </div>
+        
+        <div id="results-actions">
+            <button class="btn accent-btn" id="btn-retry-failed" style="display: none;" onclick="initFailedQuiz()">↻ Repetir Falladas</button>
+            <button class="btn primary-btn" onclick="initFullExam()">📝 Nuevo Examen Aleatorio</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // BASE DE DATOS NORMATIVA NDC (Temas 4 y 5)
+    const fullDb = [
+        // TEMA 4
+        { q: "Se sabe que los datos considerados por la RGPD, especialmente sensibles, no pueden ser tratados, pero existen excepciones. ¿Cuál es un escenario en el que SÍ se podrían tratar?", options: ["Datos relativos a la Salud para acreditar una minusvalía.", "Datos biométricos para controles de marketing.", "Afiliación sindical para envíos publicitarios.", "Ideología política para estadísticas de empresa."], ans: 0, justification: "Un escenario válido según el reglamento es el tratamiento de datos relativos a la Salud para acreditar una minusvalía (derechos laborales, seguridad social, etc)." },
+        { q: "¿Cuál de los siguientes es un principio de protección de datos?", options: ["Tratamiento de datos.", "Eliminación de datos.", "Conservación de los datos.", "Consentimiento."], ans: 3, justification: "En el art. 5 de la RGPD se listan los principios, y ahí sale 'Consentimiento' como uno de ellos. Las otras opciones son acciones, no principios." },
+        { q: "¿En cuál de los siguientes escenarios NO es obligatorio realizar un análisis de impacto en privacidad?", options: ["Cuando se traten con sistemas de Big Data.", "Cuando se traten con sistemas expertos de toma de decisión.", "Cuando se traten con tecnologías Blockchain.", "Cuando se traten datos de nóminas anonimizados."], ans: 3, justification: "El PIA es obligatorio en big data o blockchain si hay alto riesgo, pero si los datos están anonimizados ya no son personales, así que no aplica RGPD ni análisis." },
+        { q: "Si soy cliente de ACME desde el año que fue fundada ¿Qué figura ejerce ACME ante los datos?", options: ["Responsable de tratamiento.", "Encargado de tratamiento.", "Interesado.", "Propietario de información."], ans: 0, justification: "ACME es 'responsable de la información de su cartera de clientes', ya que maneja los datos para sus propios servicios y decide sobre ellos." },
+        { q: "¿Cuál de los siguientes países se considera tiene un nivel de seguridad adecuado para una transferencia internacional de datos?", options: ["Argentina.", "Marruecos.", "Australia.", "Chile."], ans: 0, justification: "En la lista de países con nivel adecuado de la Comisión Europea sale Argentina explícitamente." },
+        { q: "¿En qué casos un encargado de tratamiento no tiene que notificar una brecha de seguridad a la AEPD?", options: ["Cuando solo se ha filtrado la mitad de los datos.", "Cuando los datos filtrados no incluyen contraseñas.", "Cuando los datos filtrados se encuentran anonimizados.", "Cuando los datos filtrados no son sensibles."], ans: 2, justification: "Si están anonimizados no hay riesgo para los derechos porque no identifican a nadie, así que el responsable decide no notificar a la AEPD." },
+        { q: "Menciona dos situaciones en las que, según reglamento, debe realizarse el análisis de impacto (PIA).", options: ["Las de alto riesgo por nuevas tecnologías y evaluación sistemática automatizada.", "Cuando se traten datos básicos de empleados y se usen correos.", "Cuando se usen cámaras de seguridad simuladas y papel.", "En ninguna de las anteriores."], ans: 0, justification: "Se requiere en situaciones de alto riesgo por el uso de nuevas tecnologías o cuando se hace una evaluación sistemática en procesos automatizados." },
+        { q: "¿A que hacen referencia las siglas de EIPD?", options: ["Entidad Independiente de Privacidad de Datos.", "Evaluación de Impacto en Protección de Datos.", "Estándar Internacional de Protección de Datos.", "Equipamiento Informático de Protección Dirigida."], ans: 1, justification: "EIPD significa Evaluación de Impacto en Protección de Datos (en inglés PIA - Privacy Impact Assessment)." },
+        { q: "¿Cual de los siguientes NO es un dato sensible?", options: ["Tarjeta de crédito.", "Afiliación política.", "Salud.", "Origen racial."], ans: 0, justification: "Los datos sensibles (o de categoría especial) son raza, afiliación política, salud, biométricos, etc. La tarjeta es dato personal pero no sensible." },
+        { q: "Cuando un responsable de tratamiento informa sobre la finalidad del tratamiento de datos. ¿A qué derecho está dando respuesta?", options: ["Derecho de Información.", "Derecho de Acceso.", "Derecho a la portabilidad.", "Derecho a la limitación de tratamiento."], ans: 0, justification: "Informar la finalidad es el deber de transparencia del art. 13-14 RGPD, que responde al Derecho de Información." },
+        { q: "La RGPD aplica al tratamiento de datos de ciudadanos europeos alojados en servidores en Estados Unidos. ¿Verdadero o falso?", options: ["Verdadero", "Falso"], ans: 0, justification: "Aplica en otros territorios si se están tratando datos de ciudadanos europeos. Aunque el servidor esté en USA, sí rige." },
+        { q: "¿Cuál de las siguientes empresas tiene que tener obligatoriamente un DPO?", options: ["Una empresa de automoción.", "Una empresa de servicios de comunicaciones.", "Una cadena de supermercados.", "Una empresa de transportes."], ans: 1, justification: "El material lista 'Servicios de comunicaciones' como sector donde el DPO es obligatorio (junto a sanidad o crédito)." },
+        { q: "La Agencia Española de Protección de Datos es la única autoridad competente en materia de protección de datos en España. ¿Verdadero o falso?", options: ["Verdadero", "Falso"], ans: 1, justification: "Es Falso. Hay agencias autonómicas en Andalucía, Cataluña y País Vasco con potestad local, además de la AEPD." },
+        { q: "¿Cuál de los siguientes es un dato de carácter personal?", options: ["Un CIF de una empresa.", "Una dirección de correo departamental de empresa.", "El número de teléfono atención al cliente.", "Una dirección de correo de un empleado de la empresa."], ans: 3, justification: "El correo de un empleado (nombre.apellido@empresa.com) identifica a una persona física. Los otros son datos de empresa." },
+        { q: "¿Cuál de los siguientes NO es un principio de protección de datos?", options: ["Seguridad de los datos.", "Conservación de datos.", "Confidencialidad de los datos.", "Responsabilidad activa."], ans: 1, justification: "Los principios son seguridad, confidencialidad, etc. El principio real no es la 'conservación' en sí, sino la 'limitación del plazo de conservación'." },
+        { q: "ACME subcontrata los servicios de atención al cliente en un tercero. ¿Qué figura ejerce este tercero ante los datos?", options: ["Propietario de información.", "Encargado de tratamiento.", "Responsable de tratamiento.", "Interesado."], ans: 1, justification: "El tercero (call center) es 'encargado de tratamiento' porque trata los datos en nombre y por cuenta del responsable (ACME)." },
+        { q: "El responsable de tratamiento debe notificar a la agencia de protección de datos una brecha de datos personales en un plazo no superior a 48 horas. ¿Verdadero o falso?", options: ["Verdadero", "Falso"], ans: 1, justification: "Falso. El plazo estipulado por la RGPD es de un máximo de 72 horas desde que se tiene constancia." },
+        { q: "El DPO tiene responsabilidad penal sobre los datos que gestiona la organización. ¿Verdadero o falso?", options: ["Verdadero", "Falso"], ans: 1, justification: "Falso. El DPO asesora y supervisa, pero la responsabilidad penal recae sobre el Responsable de tratamiento." },
+        { q: "Un usuario se muda de vivienda. ¿Qué derecho podría sería razonable utilizar ante todos sus proveedores?", options: ["Derecho de rectificación.", "Derecho de oposición al tratamiento.", "Derecho de acceso.", "Derecho de información."], ans: 0, justification: "Al cambiar de casa, utilizas el derecho de rectificación para actualizar una dirección inexacta o antigua." },
+        { q: "Un usuario quiere que una empresa deje de llamarle para actividades de marketing. ¿Qué derecho podría solicitar?", options: ["Derecho a la limitación de tratamiento.", "Derecho de Supresión de datos.", "Cualquiera de las opciones expuestas.", "Derecho de oposición al tratamiento."], ans: 3, justification: "Para marketing directo, el art. 21 RGPD permite usar el Derecho de Oposición al tratamiento." },
+        { q: "Un cliente de ACME que este ejerciendo un derecho de acceso. ¿Qué figura ejerce ante los datos?", options: ["Delegado de información.", "Interesado.", "Encargado de tratamiento.", "Responsable de tratamiento."], ans: 1, justification: "El cliente propietario de los datos personales es la figura del 'Interesado'." },
+        { q: "Un análisis de impacto en privacidad será obligatorio cuando:", options: ["Se traten datos de empleados.", "Se utilice una tecnología novedosa para tratar los datos.", "La organización subcontrate un servicio.", "Se trate al menos un dato identificativo de los clientes."], ans: 1, justification: "El PIA es obligatorio con nuevas tecnologías si suponen un alto riesgo (art. 35 RGPD)." },
+        { q: "El tratamiento de datos biométricos está prohibido salvo que sea necesario para el control de acceso de los empleados. ¿Verdadero o falso?", options: ["Verdadero", "Falso"], ans: 1, justification: "Falso. Hay más excepciones legales para tratar datos sensibles, como por ejemplo el consentimiento explícito del interesado o interés público." },
+        { q: "Un usuario quiere que una empresa borre todos los datos que tiene sobre él, ¿Qué derecho solicitará?", options: ["Derecho de supresión.", "Derecho a la portabilidad.", "Derecho a la limitación de tratamiento.", "Derecho de Acceso."], ans: 0, justification: "Conocido como el 'derecho al olvido' (Derecho de Supresión), art. 17 RGPD." },
+        { q: "¿Bajo qué supuestos NO se pueden tratar datos personales?", options: ["Cuando el tratamiento es necesario para proteger la vida del interesado.", "Cuando el tratamiento es necesario para alguna actividad de interés público.", "Cuando el tratamiento se ejecuta en base a una obligación legal.", "Cuando el tratamiento es necesario para fomentar el negocio del encargado del mismo."], ans: 3, justification: "Proteger la vida, interés público u obligación legal son bases lícitas. Los intereses comerciales propios del encargado NO lo son." },
+        { q: "El tratamiento de datos sensibles estará siempre prohibido salvo...", options: ["El encargado de tratamiento este interesado.", "Sea cedido a terceras empresas.", "Que el interesado consienta explícitamente su tratamiento.", "Sea necesario para el proceso de negocio de la empresa."], ans: 2, justification: "Una de las excepciones clave para levantar la prohibición de tratar datos sensibles es que el interesado dé su consentimiento explícito." },
+        { q: "¿Cuál de los siguientes es un dato sensible (categoría especial)?", options: ["643 093 485.", "Musulmán.", "Juan Pérez.", "73579525H."], ans: 1, justification: "La religión (Musulmán) revela creencias religiosas, lo cual es un dato de categoría especial/sensible. Los demás son identificativos." },
+        { q: "El único compromiso legal que tienen las empresas es la LOPD y la RGPD. ¿Verdadero o falso?", options: ["Verdadero", "Falso"], ans: 1, justification: "Falso. Existen múltiples normativas, como la LOPDGDD, el ENS, la directiva NIS y diversos códigos de conducta." },
+        { q: "La RGPD obliga a llevar a cabo un análisis de impacto en privacidad para todas las actividades de tratamiento de una organización. ¿Verdadero o falso?", options: ["Verdadero", "Falso"], ans: 1, justification: "Falso. Solo es obligatorio en casos de alto riesgo o uso de nuevas tecnologías." },
+        { q: "La RGPD establece una serie de medidas obligatorias de seguridad de la información (listado cerrado). ¿Verdadero o falso?", options: ["Verdadero", "Falso"], ans: 1, justification: "Falso. No hay un listado fijo obligatorio; las medidas se implementan en base a un análisis de riesgos previo." },
+        { q: "La Ley Orgánica de Protección de Datos se aprobó en 2018 y es la adaptación española de la Regulación General de Protección de Datos Europea. ¿Verdadero o falso?", options: ["Verdadero", "Falso"], ans: 0, justification: "Verdadero. Fue aprobada el 5 de diciembre de 2018 como LOPDGDD." },
+        { q: "¿Cuál de los siguientes NO es un dato de carácter personal?", options: ["80.20.14.52", "Calle príncipe de Vergara, 32, 5D.", "73579525H", "******45C"], ans: 3, justification: "******45C es un dato pseudonimizado o anonimizado que no identifica a nadie directamente. Las IPs, DNI o dirección física sí son personales." },
+
+        // TEMA 5
+        { q: "Los requisitos mínimos a cumplir con el ENS están definidos en el anexo 2 de la norma. ¿Verdadero o falso?", options: ["Verdadero", "Falso"], ans: 1, justification: "Falso. Los requisitos mínimos se detallan en los capítulos centrales de la norma, mientras que el anexo II es donde se desarrollan las 'medidas de seguridad' (controles técnicos y organizativos)." },
+        { q: "¿Cuál de las siguientes organizaciones NO está obligada a cumplir con el Esquema Nacional de Seguridad (ENS)?", options: ["ACME, dando servicio a Fuerzas y Cuerpos de Seguridad del Estado.", "Banco de España.", "Ministerio de industria, turismo y comercio.", "Banco Santander."], ans: 3, justification: "El Banco Santander es privado y no presta servicios directos de administración. ACME sí debe cumplirlo al ser proveedor de la Administración Pública." },
+        { q: "Los procesos de identificar, proteger, detectar, responder y recuperar... ¿a qué marco pertenecen?", options: ["Marco SCF.", "NIST cibersecurity framework.", "Modelo CobIT.", "ISO 27001."], ans: 1, justification: "Estos son exactamente los 5 pilares/funciones del marco NIST Cybersecurity Framework (NIST CSF)." },
+        { q: "El Tiempo para que los impactos adversos, que pueden surgir como resultado de no proporcionar un producto, servicio o actividad, se vuelvan inaceptables es:", options: ["Periodo máximo tolerable de interrupción (MTPD).", "Objetivo de tiempo de recuperación (RTO).", "Requisitos mínimos de continuidad de negocio (MBCO).", "Objetivo de punto de recuperación (RPO)."], ans: 0, justification: "Esta es la definición exacta de MTPD (Maximum Tolerable Period of Disruption)." },
+        { q: "Un proceso aprobado y con políticas definidas, actualizados regularmente de acuerdo con el perfil de riesgo de la organización. ¿En qué nivel de madurez se encuentra?", options: ["Parcial.", "Repetible.", "Informado.", "Adaptativo."], ans: 1, justification: "Corresponde al nivel 'Repetible' de madurez en ciberseguridad." },
+        { q: "¿En qué epígrafe del SGSI podemos encontrar el listado de partes interesadas de la organización?", options: ["Contexto.", "Planificación.", "Soporte.", "Liderazgo."], ans: 0, justification: "En el epígrafe de 'Contexto de la organización' se identifican las partes interesadas y sus necesidades/expectativas." },
+        { q: "¿Cuál de los siguientes es el equipo de respuesta urgente a incidentes de seguridad?", options: ["SOC.", "CSIRT.", "CERT.", "EDR."], ans: 1, justification: "El CSIRT (Computer Security Incident Response Team) es el equipo de respuesta a incidentes de seguridad referenciado en el tema (aunque históricamente comparta función con CERT)." },
+        { q: "La norma ISO 22301 es certificable. ¿Verdadero o falso?", options: ["Verdadero", "Falso"], ans: 0, justification: "Verdadero. La norma de continuidad de negocio ISO 22301 es una norma certificable para las organizaciones." },
+        { q: "¿Con qué CERT de referencia debe contar el SEPE para dar respuesta a una incidencia de seguridad?", options: ["INCIBE-CERT.", "CCN-CERT.", "ESPDEF-CERT.", "SEPE-CERT."], ans: 1, justification: "El SEPE es sector público. Para las entidades del sector público el CSIRT/CERT de referencia es el dependiente del Centro Criptológico Nacional (CCN-CERT)." },
+        { q: "Tanto las personas como las organizaciones nos podemos certificar en ISO 27001. ¿Verdadero o falso?", options: ["Verdadero", "Falso"], ans: 1, justification: "Falso. Solo las organizaciones y sus sistemas (SGSI) se certifican en ISO 27001. Las personas obtienen certificaciones profesionales (como Lead Auditor)." },
+        { q: "¿Cuál de los siguientes procesos NO forma parte de la evaluación de riesgos de continuidad?", options: ["Minimizar los riesgos.", "Analizar los riesgos identificados.", "Determinar la mejor decisión de tratamiento de riesgos.", "Identificar riesgos para las actividades críticas para la organización."], ans: 0, justification: "'Minimizar los riesgos' es un objetivo, no un paso del proceso de evaluación (que consta de identificar, analizar y tratar)." },
+        { q: "El período de tiempo permitido tras un incidente dentro del cual se reanuda un producto, servicio o actividad o se recuperan recursos se denomina:", options: ["Requisitos mínimos de continuidad de negocio (MBCO).", "Periodo máximo tolerable de interrupción (MTPD).", "Objetivo de tiempo de recuperación (RTO).", "Objetivo de punto de recuperación (RPO)."], ans: 2, justification: "Esta es la definición del RTO (Recovery Time Objective)." },
+        { q: "¿Qué tipo de control de los siguientes NO es válido?", options: ["Responsivo.", "Detectivo.", "Preventivo.", "Correctivo."], ans: 0, justification: "Los controles de seguridad se clasifican habitualmente en preventivos, detectivos y correctivos. 'Responsivo' no es una clasificación estándar de control." },
+        { q: "La directiva NIS exige nombrar a un responsable de seguridad a las organizaciones en las que aplica. ¿Verdadero o falso?", options: ["Verdadero", "Falso"], ans: 0, justification: "Verdadero. Las organizaciones afectadas (OSE y PSD) deben designar a una persona, unidad u órgano como responsable de seguridad." },
+        { q: "¿En qué proceso podríamos incluir la formación y capacitación en ciberseguridad?", options: ["Respuesta.", "Detección.", "Identificación.", "Protección."], ans: 3, justification: "Pertenece a la fase de 'Protección' del NIST CSF, ya que capacitar al personal ayuda a prevenir y fortificar la empresa antes de que ocurra nada." },
+        { q: "¿Cual de los siguientes son conjunto de buenas prácticas para la gestión de los sistemas de información de las compañías?", options: ["SCF.", "NIST cibersecurity framework.", "CobIT.", "CIS CSF."], ans: 2, justification: "CobIT es el marco reconocido internacionalmente como conjunto de buenas prácticas para el gobierno y gestión de las TI de la empresa." },
+        { q: "¿Cuál de los siguientes NO es una autoridad competente de cara a la vigilancia del cumplimiento de la directiva NIS?", options: ["INCIBE.", "Secretaría de Estado para el Avance Digital.", "Centro Nacional de Protección de Infraestructuras Críticas (CNPIC).", "Centro Criptológico Nacional (CCN)."], ans: 0, justification: "INCIBE opera como un CERT de referencia (junto con CCN-CERT), pero las autoridades de vigilancia competentes son la Secretaría de Estado, el CNPIC y el CCN." },
+        { q: "¿En qué epígrafe del SGSI podemos encontrar el listado de proyectos para la mejora de la madurez en seguridad?", options: ["Soporte.", "Planificación.", "Contexto.", "Liderazgo."], ans: 1, justification: "El plan de proyectos e iniciativas para mejorar la madurez se encuentra en la fase de Planificación." },
+        { q: "La directiva NIS exige un listado cerrado de proveedores de servicios digitales. ¿Verdadero o falso?", options: ["Verdadero", "Falso"], ans: 1, justification: "Falso. La directiva NIS NO exige a los Estados miembros identificar a los PSD mediante un listado cerrado y exhaustivo." },
+        { q: "¿Cuál de las siguientes normas es certificable?", options: ["ISO 27002.", "ISO 27000.", "ISO 27001.", "ISO 27003."], ans: 2, justification: "Solo la ISO 27001 (requisitos del SGSI) es certificable. Las demás son normas de apoyo, vocabulario o guías de implementación." }
+    ];
+
+    let currentQueue = []; // La batería de preguntas de la ronda
+    let failedQueue = [];  // Preguntas falladas de la ronda
+    let currentQuestionIndex = 0;
+    let score = 0;
+    let hasAnswered = false;
+    
+    // Variables temporizador
+    let startTime;
+    let timerInterval;
+
+    // Elementos DOM
+    const questionTextEl = document.getElementById('question-text');
+    const optionsContainer = document.getElementById('options-container');
+    const progressEl = document.getElementById('progress-indicator');
+    const feedbackBox = document.getElementById('feedback-container');
+    const feedbackText = document.getElementById('feedback-text');
+    const feedbackTitle = document.getElementById('feedback-title');
+    const nextBtn = document.getElementById('next-btn');
+    const quizScreen = document.getElementById('quiz-screen');
+    const resultsScreen = document.getElementById('results-screen');
+    const timerDisplay = document.getElementById('timer-display');
+    const finalGradeEl = document.getElementById('final-grade');
+
+    function startTimer() {
+        startTime = Date.now();
+        timerInterval = setInterval(() => {
+            let diff = Date.now() - startTime;
+            let m = Math.floor(diff / 60000);
+            let s = Math.floor((diff % 60000) / 1000);
+            timerDisplay.innerText = (m < 10 ? '0'+m : m) + ':' + (s < 10 ? '0'+s : s);
+        }, 1000);
+    }
+
+    function stopTimer() {
+        clearInterval(timerInterval);
+    }
+
+    // INICIAR TEST ALEATORIO (30 Preguntas)
+    function initFullExam() {
+        // Mezclamos todas y seleccionamos 30 (si hay menos de 30 coge todas)
+        let sliceLimit = fullDb.length > 30 ? 30 : fullDb.length;
+        currentQueue = [...fullDb].sort(() => Math.random() - 0.5).slice(0, sliceLimit);
+        failedQueue = [];
+        startRonda();
+    }
+
+    // INICIAR TEST SOLO CON FALLOS
+    function initFailedQuiz() {
+        currentQueue = [...failedQueue].sort(() => Math.random() - 0.5);
+        failedQueue = []; // Limpiamos para registrar nuevos fallos
+        startRonda();
+    }
+
+    function startRonda() {
+        currentQuestionIndex = 0;
+        score = 0;
+        quizScreen.style.display = 'block';
+        resultsScreen.style.display = 'none';
+        
+        clearInterval(timerInterval);
+        timerDisplay.innerText = "00:00";
+        startTimer();
+        
+        loadQuestion();
+    }
+
+    function loadQuestion() {
+        hasAnswered = false;
+        feedbackBox.style.display = 'none';
+        nextBtn.style.display = 'none';
+        optionsContainer.innerHTML = '';
+        
+        const qData = currentQueue[currentQuestionIndex];
+        progressEl.innerText = `Pregunta ${currentQuestionIndex + 1}/${currentQueue.length}`;
+        questionTextEl.innerText = qData.q;
+
+        // Cargar botones
+        qData.options.forEach((opt, index) => {
+            const btn = document.createElement('button');
+            btn.className = 'option-btn';
+            btn.innerText = opt;
+            btn.onclick = () => selectOption(index, btn);
+            optionsContainer.appendChild(btn);
+        });
+    }
+
+    function selectOption(selectedIndex, buttonClicked) {
+        if (hasAnswered) return;
+        hasAnswered = true;
+
+        const qData = currentQueue[currentQuestionIndex];
+        const buttons = optionsContainer.children;
+
+        // Deshabilitar
+        for (let btn of buttons) {
+            btn.disabled = true;
+        }
+
+        // Evaluar
+        if (selectedIndex === qData.ans) {
+            buttonClicked.classList.add('correct');
+            score++;
+            feedbackTitle.innerText = "¡Correcto! - Justificación:";
+            feedbackTitle.style.color = "var(--success)";
+        } else {
+            buttonClicked.classList.add('wrong');
+            buttons[qData.ans].classList.add('correct');
+            feedbackTitle.innerText = "Incorrecto - Justificación:";
+            feedbackTitle.style.color = "var(--error)";
+            
+            // Se va al pozo de las falladas
+            failedQueue.push(qData);
+        }
+
+        feedbackText.innerText = qData.justification;
+        feedbackBox.style.display = 'block';
+        
+        if (currentQuestionIndex < currentQueue.length - 1) {
+            nextBtn.innerText = "Siguiente Pregunta ➔";
+        } else {
+            nextBtn.innerText = "Ver Calificación ➔";
+        }
+        nextBtn.style.display = 'inline-block';
+    }
+
+    function nextQuestion() {
+        currentQuestionIndex++;
+        if (currentQuestionIndex < currentQueue.length) {
+            loadQuestion();
+        } else {
+            showResults();
+        }
+    }
+
+    function showResults() {
+        stopTimer();
+        quizScreen.style.display = 'none';
+        resultsScreen.style.display = 'block';
+        
+        // Resultados numéricos
+        document.getElementById('final-score').innerText = `${score}/${currentQueue.length}`;
+        document.getElementById('final-time').innerText = timerDisplay.innerText;
+        
+        // Nota final sobre 10
+        let grade = (score / currentQueue.length) * 10;
+        finalGradeEl.innerText = grade.toFixed(2);
+        
+        // Estilos de la nota
+        finalGradeEl.className = "stat-value";
+        if(grade >= 8.5) finalGradeEl.classList.add('grade-high');
+        else if(grade >= 5.0) finalGradeEl.classList.add('grade-mid');
+        else finalGradeEl.classList.add('grade-low');
+
+        // Textos y botones
+        const resTitle = document.getElementById('results-title');
+        const resMessage = document.getElementById('results-message');
+        const btnRetryFailed = document.getElementById('btn-retry-failed');
+
+        if (failedQueue.length > 0) {
+            btnRetryFailed.style.display = 'inline-block';
+            resTitle.innerText = "¡Sigue repasando!";
+            resMessage.innerText = `Has obtenido un ${grade.toFixed(2)} sobre 10. Tienes ${failedQueue.length} pregunta(s) por afianzar.`;
+        } else {
+            btnRetryFailed.style.display = 'none';
+            resTitle.innerText = "¡Aprobado con honores!";
+            resMessage.innerText = "¡Has hecho un test impecable! Estás dominando la normativa de seguridad.";
+        }
+    }
+
+    // Auto-arranque de la app
+    window.onload = initFullExam;
+</script>
+
+</body>
+</html>
