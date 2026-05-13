@@ -1,2 +1,2 @@
 # ceti
-Examenes de repaso
+Examenes de repaso para el Segundo Semestre del Curso de Especialización de Ciberseguridad
